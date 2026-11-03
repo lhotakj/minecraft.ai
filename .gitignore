@@ -1,0 +1,26 @@
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.logs
+
+# IDE and Editor Files
+.idea/
+*.iml
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Server run directories
+run/
+cache/
+logs/
+

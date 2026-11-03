@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Turns the AI's JSON operations into a map of local position -> block, validating everything on
@@ -35,10 +36,16 @@ final class BuildPlanner {
     private final Map<String, BlockData> dataCache = new HashMap<>();
     private final int maxBlocks;
     private final Set<Material> denied;
+    private final Function<String, BlockData> blockParser;
 
     BuildPlanner(int maxBlocks, Set<Material> denied) {
+        this(maxBlocks, denied, Bukkit::createBlockData);
+    }
+
+    BuildPlanner(int maxBlocks, Set<Material> denied, Function<String, BlockData> blockParser) {
         this.maxBlocks = maxBlocks;
         this.denied = denied;
+        this.blockParser = blockParser;
     }
 
     Map<Pos, BlockData> plan(JsonArray ops) throws PlanException {
@@ -238,7 +245,7 @@ final class BuildPlanner {
         if (name == null || name.isBlank()) {
             throw new PlanException("missing 'block'.");
         }
-        name = name.trim().toLowerCase(Locale.ROOT);
+        name = name.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
         if (!name.contains(":")) {
             name = "minecraft:" + name;
         }
@@ -248,11 +255,11 @@ final class BuildPlanner {
         }
         BlockData data;
         try {
-            data = Bukkit.createBlockData(name);
+            data = blockParser.apply(name);
         } catch (IllegalArgumentException e) {
             throw new PlanException("unknown block '" + name + "'.");
         }
-        if (denied.contains(data.getMaterial())) {
+        if (data != null && denied.contains(data.getMaterial())) {
             throw new PlanException("block '" + name + "' is not allowed on this server.");
         }
         dataCache.put(name, data);

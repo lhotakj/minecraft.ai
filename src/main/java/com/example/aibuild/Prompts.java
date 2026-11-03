@@ -12,7 +12,7 @@ final class Prompts {
                 Format:
                 {"name": "short title", "ops": [ ...operations in build order... ]}
 
-                Coordinates are integers in a local grid: x = east, z = south, y = up. The y=0 layer is the ground surface: the plugin puts it on the block the player is standing on, so floors and foundations belong at y=0 and the building rises from y=1 upward. You may use y from -4 up to %d (negative y for foundations). Choose any x/z origin you like (centering the build near 0,0 is best); the plugin moves the finished build in front of the player.
+                Coordinates are integers in a local grid: x = east, z = south, y = up. The y=0 layer is the ground surface: the plugin puts it on the block the player is standing on, so floors and foundations belong at y=0 and the building rises from y=1 upward. You may use y from -8 up to %d (negative y for basements, crypts, hypogeums, underground dungeons, and foundations). Choose any x/z origin you like (centering the build near 0,0 is best); the plugin moves the finished build in front of the player.
 
                 Operations. "block" is a Minecraft block id, optionally with block states, e.g. "minecraft:stone_bricks" or "minecraft:oak_stairs[facing=north,half=bottom]".
                 1. {"op":"fill","x1":0,"y1":0,"z1":0,"x2":9,"y2":3,"z2":9,"block":"minecraft:stone"}
@@ -34,6 +34,13 @@ final class Prompts {
                 - Use only real Java Edition block ids. Do not use TNT, lava, command blocks, barriers, spawners or bedrock.
                 - Make it recognisable and attractive: mix materials (for example stone_bricks, sandstone, smooth_sandstone, cut_sandstone and matching stairs and slabs), keep believable proportions, add floors, entrances, stairs, lighting and small details.
                 - Keep interiors walkable: never fill rooms, arenas or halls solid.
+                - Multi-floor structures: When building multi-story buildings (e.g. houses with 2 or 3 floors), divide the vertical space into distinct levels (e.g. ground floor y=1..4, 2nd floor y=5..8, 3rd floor y=9..12). Add intermediate floor slabs/planks, interior stairs or ladders between levels, and lighting.
+                - Underground dungeons & hypogeums: For underground dungeons, crypts, or hidden animal chambers (like the Roman Colosseum hypogeum beneath an arena floor), build chambers, corridors and cages (using iron_bars or fence gates) at negative y levels (e.g. y = -6 to -1) below the ground/sand surface (y=0). Add trapdoors, ladders or open pits connecting the dungeon to the floor above.
+                - Doors: In Minecraft, doors are 2 blocks tall. Always place BOTH halves: lower half at y with [half=lower,facing=...] and upper half at y+1 with [half=upper,facing=...] (e.g. "minecraft:oak_door[half=lower,facing=south]" and "minecraft:oak_door[half=upper,facing=south]").
+                - Balconies & Windows: For balconies, extend floor blocks outward on the requested floor, enclose with railings (e.g. "minecraft:oak_fence") or trapdoors, and place a door leading onto it. For windows, carve openings or place "minecraft:glass_pane".
+                - Roofs: Add realistic pitched or gabled roofs using stairs (e.g. "minecraft:oak_stairs") or slabs.
+                - Material consistency: When a user specifies materials (e.g. oak wood), use matching wood types (e.g. "minecraft:oak_planks" for walls/floors, "minecraft:oak_log" for corner framing, "minecraft:oak_stairs" for roofs/stairs, "minecraft:oak_fence" for balconies/railings, and "minecraft:oak_door").
+                - Player requests: Interpret player requests flexibly and handle typos gracefully (e.g. "housw" -> house).
                 - For stepped seating (amphitheatres, stadiums), stack concentric ellipse rings whose height grows toward the outside.
                 - Output valid JSON only.
                 """.formatted(maxHeight, maxBlocks, maxSize, maxHeight);

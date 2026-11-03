@@ -1,0 +1,175 @@
+name: Build and Release AiBuild Plugin
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Package (0.1.${{ github.run_number }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Configure build version (0.1.${{ github.run_number }})
+        id: version
+        run: |
+          VERSION="0.1.${{ github.run_number }}"
+          echo "BUILD_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          mvn versions:set -DnewVersion=$VERSION -DgenerateBackupPoms=false
+
+      - name: Build, Test and Package with Maven
+        run: mvn clean package -B
+
+      - name: Prepare distribution artifacts
+        run: |
+          mkdir -p dist
+          cp target/AiBuild.jar dist/AiBuild.jar
+          cp target/AiBuild.jar dist/AiBuild-${{ env.BUILD_VERSION }}.jar
+          ls -lh dist/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AiBuild-${{ env.BUILD_VERSION }}
+          path: dist/
+          retention-days: 90
+
+      - name: Publish Job Summary
+        run: |
+          cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+          ## 🎮 AiBuild Plugin v${{ env.BUILD_VERSION }} Ready!
+
+          ### 📦 Download Artifacts
+          - **AiBuild-${{ env.BUILD_VERSION }}.jar** (download from the Artifacts section above or the Releases tab)
+          - **AiBuild.jar** (drop-in replacement name)
+
+          ---
+
+          ### 🚀 Quick Start Instructions
+
+          #### 1. Requirements
+          - **Minecraft Server**: PaperMC 1.21.x (or compatible Paper/Purpur 1.21 fork).
+          - **Runtime**: Java 21+.
+          - **AI API Key**:
+            - **Google Gemini** (Recommended): [Get a free key from Google AI Studio](https://aistudio.google.com/apikey).
+            - **Anthropic Claude**: [Get a key from Anthropic Console](https://console.anthropic.com).
+
+          #### 2. Installation
+          1. Download `AiBuild.jar`.
+          2. Drop `AiBuild.jar` into your server's `plugins/` directory.
+          3. Start the server once so the plugin creates `plugins/AiBuild/config.yml`.
+
+          #### 3. Setup Your API Key
+          Provide your key through an environment variable (recommended) or in `plugins/AiBuild/config.yml`:
+
+          ```bash
+          # Environment variable method (recommended):
+          export GEMINI_API_KEY="your-gemini-key"
+          # or for Claude:
+          export ANTHROPIC_API_KEY="your-anthropic-key"
+          ```
+
+          Or in `plugins/AiBuild/config.yml`:
+          ```yaml
+          provider: gemini
+          gemini:
+            api-key: "your-gemini-key"
+            model: "gemini-3.8-flash"
+          ```
+          Reload the plugin:
+          ```minecraft
+          /ai reload
+          ```
+
+          #### 4. Try Your First Build
+          Stand on flat ground facing open terrain and execute:
+          ```minecraft
+          /ai build for me a house with three floors from oak wood, oak doors and a small balcony in second floor
+          ```
+
+          To undo the structure if you want to rebuild:
+          ```minecraft
+          /ai undo
+          ```
+          EOF
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.BUILD_VERSION }}
+          name: AiBuild v${{ env.BUILD_VERSION }}
+          draft: false
+          prerelease: false
+          files: |
+            dist/AiBuild.jar
+            dist/AiBuild-${{ env.BUILD_VERSION }}.jar
+          body: |
+            # AiBuild v${{ env.BUILD_VERSION }}
+
+            Automated build for version **0.1.${{ env.BUILD_VERSION }}**.
+
+            ## 📥 Downloads
+            - **[`AiBuild.jar`](https://github.com/${{ github.repository }}/releases/download/v${{ env.BUILD_VERSION }}/AiBuild.jar)** - Standard drop-in file for `plugins/`
+            - **[`AiBuild-${{ env.BUILD_VERSION }}.jar`](https://github.com/${{ github.repository }}/releases/download/v${{ env.BUILD_VERSION }}/AiBuild-${{ env.BUILD_VERSION }}.jar)** - Versioned archive
+
+            ---
+
+            ## 📋 Step-by-Step Installation Instructions
+
+            ### 1. Server Requirements
+            - **Server Software**: [PaperMC](https://papermc.io/downloads/paper) 1.21.x (Java Edition)
+            - **Java**: Java 21 or newer
+
+            ### 2. Install Plugin
+            1. Download `AiBuild.jar` from the release assets above.
+            2. Place `AiBuild.jar` inside the `plugins/` directory of your Minecraft server.
+            3. Start or restart your server to create the default config file at `plugins/AiBuild/config.yml`.
+
+            ### 3. Configure API Credentials
+            Set your AI API key either as an environment variable or in the config file.
+
+            **Option A: Environment Variable (Recommended)**
+            ```bash
+            export GEMINI_API_KEY="AIzaSy..."
+            # or for Claude:
+            export ANTHROPIC_API_KEY="sk-ant-..."
+            ```
+
+            **Option B: Config file (`plugins/AiBuild/config.yml`)**
+            ```yaml
+            provider: gemini
+            gemini:
+              api-key: "AIzaSy..."
+              model: "gemini-3.8-flash"
+            ```
+
+            After configuring, run `/ai reload` in server console or in-game.
+
+            ### 4. Player Commands & Permissions
+            Grant the player OP or permission `aibuild.use`.
+
+            - `/ai build <description>` - Generates and builds the requested structure in front of you.
+              - Example: `/ai build for me a house with three floors from oak wood, oak doors and a small balcony in second floor`
+            - `/ai undo` - Restores the previous world state before the last build (keeps history of last 3 builds).
+            - `/ai reload` - Reloads configuration and block deny-lists without restarting server (`aibuild.admin`).
+

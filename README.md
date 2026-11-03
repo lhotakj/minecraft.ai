@@ -1,77 +1,145 @@
 # AiBuild
 
-A Paper plugin that adds `/ai build <description>`. It sends your description to an AI model (Claude or Gemini), gets back a JSON build plan (boxes, ellipses, arched arcades, spheres, single blocks), validates it, and builds it in front of you a few thousand blocks per tick. `/ai undo` reverts it.
+[![Build and Release](https://github.com/lhotakj/minecraft.ai/actions/workflows/build.yml/badge.svg)](https://github.com/lhotakj/minecraft.ai/actions/workflows/build.yml)
+[![Minecraft Paper](https://img.shields.io/badge/PaperMC-1.21.x-blue.svg)](https://papermc.io)
+[![Java 21](https://img.shields.io/badge/Java-21-orange.svg)](https://adoptium.net)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+**AiBuild** is a high-performance PaperMC Minecraft server plugin (written in Java 21) that brings natural-language AI generation into Minecraft. Players can type conversational commands like:
+
+```minecraft
+/ai build for me a house with three floors from oak wood, oak doors and a small balcony in second floor
 ```
-/ai build a Colosseum
-/ai build a small medieval watchtower with a lantern on top
+
+The plugin sends the prompt to an advanced AI model (Google Gemini or Anthropic Claude), receives a deterministic JSON build plan, validates the geometry and safety limits, and constructs it in front of the player chunk-safely across ticks with zero lag.
+
+---
+
+## 🌟 Key Features
+
+- **Conversational Building**: Natural language input with tolerance for phrasing and minor typos (e.g. "housw" -> house).
+- **Complex Architectures**: Understands multi-floor structures, doors (matching top and bottom halves), balconies, windows, roofs, stairs, and decorative details.
+- **Dual AI Providers**:
+  - **Google Gemini** (Gemini 3.8 Flash, 2.5 Flash, 2.0 Flash)
+  - **Anthropic Claude** (Claude Sonnet 3.5 / 3.7)
+- **Zero-Lag Server Execution**: Places up to 4,000 blocks per tick without physics recalculations, preventing TPS drops.
+- **Instant Undo**: `/ai undo` restores the previous world state in case you want to rebuild or adjust placement.
+- **Safety Envelope**: Configurable maximum blocks, dimensions, player cooldowns, and a forbidden materials deny-list (TNT, lava, bedrock, command blocks).
+- **Automated CI/CD**: Automatic GitHub Actions workflow that builds every release, stamps `0.1.<build-number>`, and publishes downloadable `.jar` releases.
+
+---
+
+## 📥 Download & Installation
+
+### Option 1: Download Pre-built Release (Recommended)
+1. Go to the [Releases](https://github.com/lhotakj/minecraft.ai/releases) tab in GitHub.
+2. Download the latest **`AiBuild.jar`** (or versioned `AiBuild-0.1.<build-number>.jar`).
+3. Place `AiBuild.jar` into your Minecraft server's `plugins/` folder.
+4. Ensure your server is running **Paper 1.21.x** with **Java 21**.
+
+### Option 2: Download Artifact from GitHub Actions
+1. Open the [Actions](https://github.com/lhotakj/minecraft.ai/actions) tab.
+2. Click on the latest workflow run on `main`.
+3. Scroll down to **Artifacts** and download `AiBuild-0.1.<build-number>`.
+
+---
+
+## ⚙️ Configuration & API Key Setup
+
+1. Start your server once to generate `plugins/AiBuild/config.yml`.
+2. Configure your AI API key using **either** method:
+
+### Method A: Environment Variable (Recommended)
+Set the variable on the machine or container running the server:
+```bash
+# For Gemini:
+export GEMINI_API_KEY="AIzaSy..."
+
+# For Claude:
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+### Method B: In `plugins/AiBuild/config.yml`
+```yaml
+# Select provider: "gemini" or "anthropic"
+provider: gemini
+
+gemini:
+  api-key: "AIzaSy..."
+  model: "gemini-3.8-flash"
+  max-output-tokens: 32768
+  thinking-level: "" # optional: low | medium | high
+
+anthropic:
+  api-key: "sk-ant-..."
+  model: "claude-sonnet-5-5"
+  max-tokens: 16000
+```
+
+3. Run `/ai reload` in-game or from server console.
+
+---
+
+## 🎮 How to Use in Game
+
+1. Grant the player OP or permission `aibuild.use`.
+2. Stand on flat ground facing open space. The build will appear in front of you, with the ground floor matching the elevation under your feet.
+3. Run your build command:
+
+```minecraft
+# Example: 3-floor oak house with balcony and doors
+/ai build for me a house with three floors from oak wood, oak doors and a small balcony in second floor
+
+# Example: Medieval Watchtower
+/ai build a medieval watchtower from cobblestone and dark oak with lanterns on top
+
+# Example: Roman Colosseum
+/ai build a sandstone Colosseum with three tiers of arched arcades
+```
+
+To revert the build:
+```minecraft
 /ai undo
 ```
 
-## Requirements
-
-- Paper 1.21.x server, Java 21
-- Maven 3.8+ and JDK 21 on the machine you build on
-- An API key for the provider you pick:
-  - Gemini: a key from Google AI Studio (https://aistudio.google.com/apikey)
-  - Claude: a key from the Anthropic Console (https://console.anthropic.com)
-
-## Build
-
-```
-mvn package
+To reload configuration:
+```minecraft
+/ai reload
 ```
 
-The plugin ends up at `target/AiBuild.jar`. If your server is not 1.21.4, change the `paper-api` version in `pom.xml` (and `api-version` in `src/main/resources/plugin.yml`) to match.
+---
 
-## Install
+## 🔐 Permissions
 
-1. Copy `AiBuild.jar` to the server's `plugins/` folder and start the server once. (Upgrading from the first version? Delete `plugins/AiBuild/config.yml` first so the new layout is generated.)
-2. Pick a provider in `plugins/AiBuild/config.yml` (`provider: gemini` or `provider: anthropic`) and set its key, either way:
-   - environment variable `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` for the server process (recommended), or
-   - `gemini.api-key` / `anthropic.api-key` in the config.
-3. `/ai reload` (or restart). The server log says which model is ready, or what is missing.
-4. Make yourself an op (or grant `aibuild.use`), stand on flat ground facing where you want it. The build appears in front of you, with its ground layer on the block under your feet.
-
-## Providers
-
-| Provider | Default model | Key |
+| Permission | Default | Description |
 |---|---|---|
-| `gemini` | `gemini-3.8-flash` | `gemini.api-key` / `GEMINI_API_KEY` |
-| `anthropic` | `claude-sonnet-5-5` | `anthropic.api-key` / `ANTHROPIC_API_KEY` |
+| `aibuild.use` | `op` | Allows executing `/ai build` and `/ai undo` |
+| `aibuild.admin` | `op` | Allows executing `/ai reload` |
 
-Change `gemini.model` / `anthropic.model` to try other models. Gemini notes:
+---
 
-- Gemini 3.8 Flash "thinks" before answering, and thinking tokens count toward `gemini.max-output-tokens`. The default (32768, model max 65536) leaves plenty of room; if a build fails with "reply was cut off", raise it or set `gemini.thinking-level: low`.
-- The request asks Gemini for JSON output directly (`responseMimeType: application/json`); the plugin still tolerates stray text or code fences around it.
+## 🛠️ Building from Source
 
-## Permissions
+To compile the plugin locally:
 
-| Permission | Default | Use |
-|---|---|---|
-| `aibuild.use` | op | `/ai build`, `/ai undo` |
-| `aibuild.admin` | op | `/ai reload` |
+```bash
+# Prerequisites: JDK 21+ and Maven 3.8+
+mvn clean package
+```
 
-## How it works
+The compiled plugin will be at `target/AiBuild.jar`.
 
-1. The plugin sends your text plus a system prompt that describes six operations: `fill`, `hollow_box`, `ellipse`, `arcade`, `sphere`, `setblock`.
-2. The model replies with `{"name": "...", "ops": [...]}`.
-3. `BuildPlanner` validates every operation (known blocks, deny-list, size and block-count limits) and computes the blocks without touching the world.
-4. `BlockWorker` places them bottom-up, `blocks-per-tick` per tick, without physics updates, remembering the old blocks for `/ai undo`.
+---
 
-The `arcade` operation exists for things like the Colosseum's rows of arches: it cuts evenly spaced arched openings through an elliptical wall.
+## 📚 Technical Documentation & AI Harness
 
-Code layout: `AiProvider` is the small interface (`complete(system, user)`); `AnthropicClient` and `GeminiClient` implement it and `AiProviders` picks one from the config. Adding another backend means one new class plus one `case` in `AiProviders`.
+- [AI Integration & Architecture](docs/AI_ARCHITECTURE.md): Full technical breakdown of prompt processing, spatial math, coordinate transformations, and non-blocking scheduling.
+- [Prompting Guide](docs/PROMPT_GUIDE.md): Tips and best practices for creating complex structures, multi-floor buildings, roofs, and block palettes.
+- [AI Harness Specification](AI_HARNESS.md): Standards for AI coding agents and human developers on Bukkit/Paper threading rules, chunk safety, and Java 21 conventions.
+- [Build Plan JSON Schema](docs/schemas/build-plan.schema.json): Formal JSON Schema specification for the AI structure plan.
 
-## Limits and safety
+---
 
-- All limits live in `config.yml` and are enforced by the plugin, not by the AI: total blocks, width/depth, height, per-player cooldown, deny-list (TNT, lava, command blocks, spawners, bedrock, and so on).
-- Every `/ai build` is one paid API call (on a free Gemini tier, it counts against your rate limits). A cooldown (15s by default) and the `aibuild.use` permission are your cost controls.
-- Undo restores block types and states, not chest contents or other block entity data, and only for the last 3 builds per player (kept in memory, lost on restart).
-- Builds ignore terrain: on a slope, part of the build may float or be buried. Flat ground works best.
-- Keep API keys out of version control.
+## 📜 License
 
-## Tuning ideas
-
-- Lag while building: lower `limits.blocks-per-tick`.
-- Different style: edit the prompt in `Prompts.java` (e.g. "always build in Gothic style").
+This project is licensed under the MIT License.

@@ -302,13 +302,20 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
     // ---------------------------------------------------------------- helpers
 
     /** The AI may wrap its JSON in prose or code fences despite instructions; take the outermost object. */
-    private static JsonObject extractJson(String text) {
+    static JsonObject extractJson(String text) {
         int start = text.indexOf('{');
         int end = text.lastIndexOf('}');
         if (start < 0 || end <= start) {
             throw new IllegalArgumentException("the AI did not return a JSON build plan.");
         }
-        return JsonParser.parseString(text.substring(start, end + 1)).getAsJsonObject();
+        String json = text.substring(start, end + 1);
+        try {
+            var reader = new com.google.gson.stream.JsonReader(new java.io.StringReader(json));
+            reader.setLenient(true);
+            return JsonParser.parseReader(reader).getAsJsonObject();
+        } catch (Exception e) {
+            return JsonParser.parseString(json).getAsJsonObject();
+        }
     }
 
     /** Cardinal direction the player faces as {dx, dz}. Minecraft yaw: 0 = south (+z), 90 = west (-x). */

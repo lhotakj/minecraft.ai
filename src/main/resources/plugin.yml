@@ -1,8 +1,8 @@
 name: AiBuild
-version: 1.0.0
+version: '${project.version}'
 main: com.example.aibuild.AiBuildPlugin
 api-version: "1.21"
-description: Build structures from a plain-language description using the Claude or Gemini API.
+description: Build structures from a plain-language description using Gemini or Claude AI models.
 commands:
   ai:
     description: Ask the AI to build something, or undo the last build.
