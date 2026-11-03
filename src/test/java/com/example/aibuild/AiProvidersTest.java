@@ -47,7 +47,8 @@ class AiProvidersTest {
         GeminiClient single = new GeminiClient("key", List.of("gemini-3.8-flash"), 1000, "", 30);
         assertEquals("gemini-3.8-flash", single.label());
 
-        GeminiClient multi = new GeminiClient("key", List.of("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash"), 1000, "", 30);
+        GeminiClient multi = new GeminiClient("key",
+                List.of("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash"), 1000, "", 30);
         assertEquals("gemini-3.8-flash (+2 fallbacks)", multi.label());
     }
 
@@ -56,8 +57,8 @@ class AiProvidersTest {
         AnthropicClient single = new AnthropicClient("key", List.of("claude-sonnet-5-5"), 1000, 30);
         assertEquals("claude-sonnet-5-5", single.label());
 
-        AnthropicClient multi = new AnthropicClient("key", List.of("claude-sonnet-5-5", "claude-3-5-haiku-latest"), 1000, 30);
+        AnthropicClient multi = new AnthropicClient("key", List.of("claude-sonnet-5-5", "claude-3-5-haiku-latest"),
+                1000, 30);
         assertEquals("claude-sonnet-5-5 (+1 fallbacks)", multi.label());
     }
 }
-
