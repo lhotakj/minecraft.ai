@@ -113,9 +113,10 @@ jobs:
           EOF
 
       - name: Create GitHub Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: v${{ env.BUILD_VERSION }}
           name: AiBuild v${{ env.BUILD_VERSION }}
           draft: false

@@ -156,7 +156,7 @@ final class BuildPlanner {
         range("height", height, 2, 64);
         range("thickness", thickness, 1, 32);
         BlockData data = block(o, "minecraft:air");
-        boolean carve = data.getMaterial().isAir();
+        boolean carve = isAir(data.getMaterial());
 
         double half = width / 2.0;
         double arcCentre = height - half; // height at which the rounded top begins
@@ -264,6 +264,10 @@ final class BuildPlanner {
         }
         dataCache.put(name, data);
         return data;
+    }
+
+    private static boolean isAir(Material material) {
+        return material == Material.AIR || material == Material.CAVE_AIR || material == Material.VOID_AIR;
     }
 
     private static void range(String field, int value, int min, int max) throws PlanException {
