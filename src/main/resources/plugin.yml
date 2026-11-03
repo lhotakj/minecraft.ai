@@ -5,12 +5,12 @@ api-version: "1.21"
 description: Build structures from a plain-language description using Gemini or Claude AI models.
 commands:
   ai:
-    description: Ask the AI to build something, or undo the last build.
-    usage: /ai <build <description> | undo | reload>
+    description: Ask the AI to build something, undo, check version, or view help.
+    usage: /ai <build <description> | undo | version | help | reload>
     permission: aibuild.use
 permissions:
   aibuild.use:
-    description: Use /ai build and /ai undo.
+    description: Use /ai build, /ai undo, /ai version, and /ai help.
     default: op
   aibuild.admin:
     description: Use /ai reload.

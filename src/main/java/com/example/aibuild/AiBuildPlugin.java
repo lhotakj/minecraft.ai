@@ -81,6 +81,16 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
             return true;
         }
 
+        if (sub.equals("version")) {
+            handleVersion(sender);
+            return true;
+        }
+
+        if (sub.equals("help")) {
+            handleHelp(sender);
+            return true;
+        }
+
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Only players can build.");
             return true;
@@ -98,7 +108,7 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
         if (args.length != 1) {
             return List.of();
         }
-        List<String> options = new ArrayList<>(List.of("build", "undo"));
+        List<String> options = new ArrayList<>(List.of("build", "undo", "version", "help"));
         if (sender.hasPermission("aibuild.admin")) {
             options.add("reload");
         }
@@ -108,7 +118,38 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
     }
 
     private void usage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /ai build <what to build> | /ai undo", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("Usage: /ai <build <description> | undo | version | help"
+                + (sender.hasPermission("aibuild.admin") ? " | reload>" : ">"), NamedTextColor.YELLOW));
+    }
+
+    private void handleVersion(CommandSender sender) {
+        String ver = getPluginMeta().getVersion();
+        sender.sendMessage(Component.text("[AI] AiBuild v" + ver, NamedTextColor.GOLD));
+        try {
+            AiProvider provider = AiProviders.create(getConfig());
+            sender.sendMessage(Component.text("[AI] Active AI Provider: " + provider.label(), NamedTextColor.GRAY));
+        } catch (Exception e) {
+            sender.sendMessage(Component.text("[AI] AI Provider status: Not configured (" + e.getMessage() + ")", NamedTextColor.RED));
+        }
+    }
+
+    private void handleHelp(CommandSender sender) {
+        sender.sendMessage(Component.text("=== AiBuild Commands ===", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("/ai build <description>", NamedTextColor.YELLOW)
+                .append(Component.text(" - Build a structure using AI", NamedTextColor.WHITE)));
+        sender.sendMessage(Component.text("  Example: ", NamedTextColor.GRAY)
+                .append(Component.text("/ai build for me a house with three floors from oak wood, oak doors and a small balcony in second floor", NamedTextColor.AQUA)));
+        sender.sendMessage(Component.text("/ai undo", NamedTextColor.YELLOW)
+                .append(Component.text(" - Revert your most recent build", NamedTextColor.WHITE)));
+        sender.sendMessage(Component.text("/ai version", NamedTextColor.YELLOW)
+                .append(Component.text(" - Display plugin version & provider info", NamedTextColor.WHITE)));
+        sender.sendMessage(Component.text("/ai help", NamedTextColor.YELLOW)
+                .append(Component.text(" - Show this help menu", NamedTextColor.WHITE)));
+        if (sender.hasPermission("aibuild.admin")) {
+            sender.sendMessage(Component.text("/ai reload", NamedTextColor.YELLOW)
+                    .append(Component.text(" - Reload configuration & deny-list", NamedTextColor.WHITE)));
+        }
+        sender.sendMessage(Component.text("Tip: Stand on flat ground facing open terrain before building.", NamedTextColor.GRAY));
     }
 
     // ---------------------------------------------------------------- /ai build

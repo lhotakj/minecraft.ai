@@ -102,6 +102,16 @@ To revert the build:
 /ai undo
 ```
 
+To view plugin version and AI provider status:
+```minecraft
+/ai version
+```
+
+To display in-game help and examples:
+```minecraft
+/ai help
+```
+
 To reload configuration:
 ```minecraft
 /ai reload
@@ -113,7 +123,7 @@ To reload configuration:
 
 | Permission | Default | Description |
 |---|---|---|
-| `aibuild.use` | `op` | Allows executing `/ai build` and `/ai undo` |
+| `aibuild.use` | `op` | Allows executing `/ai build`, `/ai undo`, `/ai version`, and `/ai help` |
 | `aibuild.admin` | `op` | Allows executing `/ai reload` |
 
 ---
