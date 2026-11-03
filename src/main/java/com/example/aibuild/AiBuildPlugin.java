@@ -30,12 +30,14 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * /ai build &lt;description&gt; - asks an AI model (Claude or Gemini) for a JSON build plan, validates it and builds it in
+ * /ai build &lt;description&gt; - asks an AI model (Claude or Gemini) for a
+ * JSON build plan, validates it and builds it in
  * front of the player. /ai undo reverts the most recent builds.
  */
 public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
 
-    private record UndoEntry(World world, String name, int[] xs, int[] ys, int[] zs, BlockData[] previous) {}
+    private record UndoEntry(World world, String name, int[] xs, int[] ys, int[] zs, BlockData[] previous) {
+    }
 
     private final Set<UUID> busy = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Long> lastRequest = new HashMap<>();
@@ -173,16 +175,17 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
     }
 
     private void startBuild(UUID id, World world, Location where, JsonObject root,
-                            int maxBlocks, int maxSize, int maxHeight) {
+            int maxBlocks, int maxSize, int maxHeight) {
         try {
             if (!root.has("ops") || !root.get("ops").isJsonArray()) {
                 throw new BuildPlanner.PlanException("the AI reply had no 'ops' list.");
             }
             String name = root.has("name") && root.get("name").isJsonPrimitive()
-                    ? root.get("name").getAsString() : "structure";
+                    ? root.get("name").getAsString()
+                    : "structure";
 
-            Map<BuildPlanner.Pos, BlockData> plan =
-                    new BuildPlanner(maxBlocks, denied).plan(root.getAsJsonArray("ops"));
+            Map<BuildPlanner.Pos, BlockData> plan = new BuildPlanner(maxBlocks, denied)
+                    .plan(root.getAsJsonArray("ops"));
             if (plan.isEmpty()) {
                 throw new BuildPlanner.PlanException("the plan was empty.");
             }
@@ -203,7 +206,8 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
                         + ", limit " + maxSize + " wide, " + maxHeight + " tall).");
             }
 
-            // Put the build in front of the player: nearest edge `gap` blocks away, ground layer = block under the feet.
+            // Put the build in front of the player: nearest edge `gap` blocks away, ground
+            // layer = block under the feet.
             int[] dir = facing(where.getYaw());
             double halfAhead = (dir[0] != 0 ? sizeX : sizeZ) / 2.0;
             double distance = halfAhead + getConfig().getInt("placement.gap", 4);
@@ -301,7 +305,10 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
 
     // ---------------------------------------------------------------- helpers
 
-    /** The AI may wrap its JSON in prose or code fences despite instructions; take the outermost object. */
+    /**
+     * The AI may wrap its JSON in prose or code fences despite instructions; take
+     * the outermost object.
+     */
     static JsonObject extractJson(String text) {
         int start = text.indexOf('{');
         int end = text.lastIndexOf('}');
@@ -322,14 +329,17 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
         }
     }
 
-    /** Cardinal direction the player faces as {dx, dz}. Minecraft yaw: 0 = south (+z), 90 = west (-x). */
+    /**
+     * Cardinal direction the player faces as {dx, dz}. Minecraft yaw: 0 = south
+     * (+z), 90 = west (-x).
+     */
     private static int[] facing(float yaw) {
         double rad = Math.toRadians(yaw);
         double dx = -Math.sin(rad);
         double dz = Math.cos(rad);
         return Math.abs(dx) > Math.abs(dz)
-                ? new int[] {(int) Math.signum(dx), 0}
-                : new int[] {0, (int) Math.signum(dz)};
+                ? new int[] { (int) Math.signum(dx), 0 }
+                : new int[] { 0, (int) Math.signum(dz) };
     }
 
     private void loadDenied() {
