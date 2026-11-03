@@ -209,5 +209,42 @@ class BuildPlannerTest {
         assertTrue(hasSandAtGround, "Must include sand floor on the arena surface at Y=0");
         assertTrue(hasUndergroundLionBars, "Must include underground lion dungeon with iron bars at Y < 0");
     }
+
+    @Test
+    @DisplayName("Plan handles chest with NBT items without failing")
+    void testChestWithNbtItems() throws Exception {
+        String jsonOps = """
+                [
+                  {"op": "setblock", "x": 1, "y": 1, "z": 1, "block": "minecraft:chest[facing=west]{items:[{slot:13b,id:\\"minecraft:iron_ingot\\",count:1b}]}"},
+                  {"op": "setblock", "x": 2, "y": 1, "z": 1, "block": "minecraft:chest{items:[{id:\\"diamond\\",count:5}]}"}
+                ]
+                """;
+        JsonArray ops = JsonParser.parseString(jsonOps).getAsJsonArray();
+
+        AtomicReference<String> lastParsedName = new AtomicReference<>();
+        BuildPlanner planner = new BuildPlanner(100, Collections.emptySet(), name -> {
+            lastParsedName.set(name);
+            assertFalse(name.contains("{"), "Braces should be stripped from block parser name: " + name);
+            return mockBlockData(Material.CHEST);
+        });
+
+        Map<BuildPlanner.Pos, BlockData> plan = planner.plan(ops);
+        assertEquals(2, plan.size());
+
+        Map<BuildPlanner.Pos, java.util.List<BuildPlanner.ItemInfo>> containerItems = planner.getContainerItems();
+        assertEquals(2, containerItems.size());
+
+        java.util.List<BuildPlanner.ItemInfo> items1 = containerItems.get(new BuildPlanner.Pos(1, 1, 1));
+        assertNotNull(items1);
+        assertEquals(1, items1.size());
+        assertEquals("iron_ingot", items1.get(0).materialName());
+        assertEquals(1, items1.get(0).count());
+
+        java.util.List<BuildPlanner.ItemInfo> items2 = containerItems.get(new BuildPlanner.Pos(2, 1, 1));
+        assertNotNull(items2);
+        assertEquals(1, items2.size());
+        assertEquals("diamond", items2.get(0).materialName());
+        assertEquals(5, items2.get(0).count());
+    }
 }
 

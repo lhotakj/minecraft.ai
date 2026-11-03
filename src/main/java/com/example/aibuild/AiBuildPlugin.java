@@ -229,8 +229,9 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
                     ? root.get("name").getAsString()
                     : "structure";
 
-            Map<BuildPlanner.Pos, BlockData> plan = new BuildPlanner(maxBlocks, denied)
-                    .plan(root.getAsJsonArray("ops"));
+            BuildPlanner planner = new BuildPlanner(maxBlocks, denied);
+            Map<BuildPlanner.Pos, BlockData> plan = planner.plan(root.getAsJsonArray("ops"));
+            Map<BuildPlanner.Pos, List<BuildPlanner.ItemInfo>> containerItems = planner.getContainerItems();
             if (plan.isEmpty()) {
                 throw new BuildPlanner.PlanException("the plan was empty.");
             }
@@ -268,6 +269,8 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
             int[] ys = new int[entries.size()];
             int[] zs = new int[entries.size()];
             BlockData[] data = new BlockData[entries.size()];
+            @SuppressWarnings("unchecked")
+            List<BuildPlanner.ItemInfo>[] items = new List[entries.size()];
             int count = 0;
             for (Map.Entry<BuildPlanner.Pos, BlockData> entry : entries) {
                 BuildPlanner.Pos p = entry.getKey();
@@ -279,19 +282,21 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
                 ys[count] = wy;
                 zs[count] = p.z() + offZ;
                 data[count] = entry.getValue();
+                items[count] = containerItems.get(p);
                 count++;
             }
             final int[] fx = Arrays.copyOf(xs, count);
             final int[] fy = Arrays.copyOf(ys, count);
             final int[] fz = Arrays.copyOf(zs, count);
             final BlockData[] fd = Arrays.copyOf(data, count);
+            final List<BuildPlanner.ItemInfo>[] fi = Arrays.copyOf(items, count);
             final BlockData[] previous = new BlockData[count];
 
             send(id, "Plan ready: " + name + " (" + sizeX + "x" + sizeY + "x" + sizeZ + ", " + count
                     + " blocks). Building...", NamedTextColor.GRAY);
             getLogger().info("Plan validated: " + name + " (" + sizeX + "x" + sizeY + "x" + sizeZ + ", " + count + " blocks). Starting block placement...");
 
-            new BlockWorker(world, fx, fy, fz, fd, previous, getConfig().getInt("limits.blocks-per-tick", 4000),
+            new BlockWorker(world, fx, fy, fz, fd, fi, previous, getConfig().getInt("limits.blocks-per-tick", 4000),
                     () -> {
                         int placed = 0;
                         for (BlockData old : previous) {

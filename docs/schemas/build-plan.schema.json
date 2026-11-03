@@ -109,7 +109,19 @@
               "x": { "type": "integer" },
               "y": { "type": "integer" },
               "z": { "type": "integer" },
-              "block": { "type": "string", "description": "Namespaced block id and blockstates, e.g. minecraft:oak_door[half=lower,facing=north]" }
+              "block": { "type": "string", "description": "Namespaced block id and blockstates, e.g. minecraft:oak_door[half=lower,facing=north]" },
+              "items": {
+                "type": "array",
+                "description": "Optional items placed inside container blocks (chests, barrels, dispensers).",
+                "items": {
+                  "type": "object",
+                  "required": ["id"],
+                  "properties": {
+                    "id": { "type": "string", "description": "Item identifier, e.g. iron_ingot" },
+                    "count": { "type": "integer", "default": 1, "minimum": 1, "maximum": 64 }
+                  }
+                }
+              }
             }
           }
         ]

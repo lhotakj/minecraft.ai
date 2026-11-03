@@ -15,6 +15,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Turns the AI's JSON operations into a map of local position -> block, validating everything on
@@ -23,6 +25,19 @@ import java.util.function.Function;
 final class BuildPlanner {
 
     record Pos(int x, int y, int z) {}
+
+    record ItemInfo(String materialName, int count) {
+        ItemInfo {
+            if (materialName == null || materialName.isBlank()) {
+                materialName = "stone";
+            }
+            if (materialName.startsWith("minecraft:")) {
+                materialName = materialName.substring("minecraft:".length());
+            }
+            materialName = materialName.toLowerCase(Locale.ROOT);
+            count = Math.max(1, count);
+        }
+    }
 
     static final class PlanException extends Exception {
         PlanException(String message) {
@@ -33,6 +48,7 @@ final class BuildPlanner {
     private static final int MAX_OPS = 2000;
 
     private final Map<Pos, BlockData> blocks = new LinkedHashMap<>();
+    private final Map<Pos, List<ItemInfo>> containerItems = new LinkedHashMap<>();
     private final Map<String, BlockData> dataCache = new HashMap<>();
     private final int maxBlocks;
     private final Set<Material> denied;
@@ -63,7 +79,15 @@ final class BuildPlanner {
                     case "ellipse" -> ellipse(o);
                     case "arcade" -> arcade(o);
                     case "sphere" -> sphere(o);
-                    case "setblock" -> put(new Pos(num(o, "x"), num(o, "y"), num(o, "z")), block(o, null));
+                    case "setblock" -> {
+                        Pos p = new Pos(num(o, "x"), num(o, "y"), num(o, "z"));
+                        BlockData d = block(o, null);
+                        put(p, d);
+                        List<ItemInfo> items = extractItems(o);
+                        if (!items.isEmpty()) {
+                            containerItems.put(p, items);
+                        }
+                    }
                     default -> throw new PlanException("unknown operation '" + name + "'");
                 }
             } catch (PlanException e) {
@@ -73,6 +97,10 @@ final class BuildPlanner {
             }
         }
         return blocks;
+    }
+
+    Map<Pos, List<ItemInfo>> getContainerItems() {
+        return containerItems;
     }
 
     // ---------------------------------------------------------------- operations
@@ -241,29 +269,83 @@ final class BuildPlanner {
     }
 
     private BlockData block(JsonObject o, String fallback) throws PlanException {
-        String name = o.has("block") && o.get("block").isJsonPrimitive() ? o.get("block").getAsString() : fallback;
-        if (name == null || name.isBlank()) {
+        String raw = o.has("block") && o.get("block").isJsonPrimitive() ? o.get("block").getAsString() : fallback;
+        if (raw == null || raw.isBlank()) {
             throw new PlanException("missing 'block'.");
         }
-        name = name.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
-        if (!name.contains(":")) {
-            name = "minecraft:" + name;
+        int braceIndex = raw.indexOf('{');
+        String blockPart = braceIndex >= 0 ? raw.substring(0, braceIndex) : raw;
+
+        blockPart = blockPart.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+        if (!blockPart.contains(":")) {
+            blockPart = "minecraft:" + blockPart;
         }
-        BlockData cached = dataCache.get(name);
+        BlockData cached = dataCache.get(blockPart);
         if (cached != null) {
             return cached;
         }
         BlockData data;
         try {
-            data = blockParser.apply(name);
+            data = blockParser.apply(blockPart);
         } catch (IllegalArgumentException e) {
-            throw new PlanException("unknown block '" + name + "'.");
+            throw new PlanException("unknown block '" + blockPart + "'.");
         }
         if (data != null && denied.contains(data.getMaterial())) {
-            throw new PlanException("block '" + name + "' is not allowed on this server.");
+            throw new PlanException("block '" + blockPart + "' is not allowed on this server.");
         }
-        dataCache.put(name, data);
+        dataCache.put(blockPart, data);
         return data;
+    }
+
+    static List<ItemInfo> extractItems(JsonObject o) {
+        List<ItemInfo> items = new ArrayList<>();
+        if (o.has("block") && o.get("block").isJsonPrimitive()) {
+            String raw = o.get("block").getAsString();
+            int brace = raw.indexOf('{');
+            if (brace >= 0) {
+                items.addAll(parseItemsFromNbt(raw.substring(brace)));
+            }
+        }
+        if (o.has("items") && o.get("items").isJsonArray()) {
+            for (JsonElement e : o.getAsJsonArray("items")) {
+                if (e.isJsonObject()) {
+                    JsonObject io = e.getAsJsonObject();
+                    String id = io.has("id") && io.get("id").isJsonPrimitive() ? io.get("id").getAsString() : "";
+                    int count = io.has("count") && io.get("count").isJsonPrimitive() ? io.get("count").getAsInt() : 1;
+                    if (!id.isBlank()) {
+                        items.add(new ItemInfo(id, count));
+                    }
+                }
+            }
+        }
+        return items;
+    }
+
+    static List<ItemInfo> parseItemsFromNbt(String nbt) {
+        if (nbt == null || nbt.isBlank()) {
+            return List.of();
+        }
+        List<ItemInfo> items = new ArrayList<>();
+        Pattern itemPattern = Pattern.compile("\\{([^{}]+)\\}");
+        Matcher m = itemPattern.matcher(nbt);
+        Pattern idPattern = Pattern.compile("(?:id|Item)\\s*:\\s*[\"']?([a-zA-Z0-9_:]+)[\"']?", Pattern.CASE_INSENSITIVE);
+        Pattern countPattern = Pattern.compile("(?:count|Count)\\s*:\\s*([0-9]+)[bBsSlL]?", Pattern.CASE_INSENSITIVE);
+        while (m.find()) {
+            String itemContent = m.group(1);
+            Matcher idMatcher = idPattern.matcher(itemContent);
+            if (idMatcher.find()) {
+                String id = idMatcher.group(1);
+                int count = 1;
+                Matcher countMatcher = countPattern.matcher(itemContent);
+                if (countMatcher.find()) {
+                    try {
+                        count = Math.max(1, Math.min(64, Integer.parseInt(countMatcher.group(1))));
+                    } catch (NumberFormatException ignored) {}
+                }
+                items.add(new ItemInfo(id, count));
+            }
+        }
+        return items;
     }
 
     private static boolean isAir(Material material) {
