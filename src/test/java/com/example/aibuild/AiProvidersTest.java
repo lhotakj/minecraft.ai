@@ -60,3 +60,4 @@ class AiProvidersTest {
         assertEquals("claude-sonnet-5-5 (+1 fallbacks)", multi.label());
     }
 }
+

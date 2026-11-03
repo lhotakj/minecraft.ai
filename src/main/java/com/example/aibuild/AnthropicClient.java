@@ -40,13 +40,15 @@ final class AnthropicClient implements AiProvider {
     }
 
     @Override
-    public String complete(String system, String user, Consumer<String> statusListener) throws IOException, InterruptedException {
+    public String complete(String system, String user, Consumer<String> statusListener)
+            throws IOException, InterruptedException {
         List<String> errors = new ArrayList<>();
         int perModelTimeout = Math.min(timeoutSeconds, Math.max(30, timeoutSeconds / Math.max(1, models.size())));
 
         for (int i = 0; i < models.size(); i++) {
             String model = models.get(i);
-            statusListener.accept("Calling Claude API with model '" + model + "' (" + (i + 1) + "/" + models.size() + ")...");
+            statusListener
+                    .accept("Calling Claude API with model '" + model + "' (" + (i + 1) + "/" + models.size() + ")...");
             long start = System.currentTimeMillis();
             try {
                 String reply = callMessages(model, system, user, perModelTimeout);
@@ -59,14 +61,16 @@ final class AnthropicClient implements AiProvider {
                 errors.add(model + " (" + elapsed + "ms): " + msg);
                 if (i + 1 < models.size()) {
                     String next = models.get(i + 1);
-                    statusListener.accept("Model '" + model + "' failed (" + msg + "). Failing over to '" + next + "'...");
+                    statusListener
+                            .accept("Model '" + model + "' failed (" + msg + "). Failing over to '" + next + "'...");
                 }
             }
         }
         throw new IOException("All configured Claude models failed:\n- " + String.join("\n- ", errors));
     }
 
-    private String callMessages(String model, String system, String user, int timeout) throws IOException, InterruptedException {
+    private String callMessages(String model, String system, String user, int timeout)
+            throws IOException, InterruptedException {
         JsonObject message = new JsonObject();
         message.addProperty("role", "user");
         message.addProperty("content", user);
@@ -90,7 +94,8 @@ final class AnthropicClient implements AiProvider {
         JsonObject json = JsonParser.parseString(Http.post(request)).getAsJsonObject();
         JsonElement stop = json.get("stop_reason");
         if (stop != null && !stop.isJsonNull() && "max_tokens".equals(stop.getAsString())) {
-            throw new IOException("The AI's reply was cut off. Raise anthropic.max-tokens in config.yml or ask for a simpler build.");
+            throw new IOException(
+                    "The AI's reply was cut off. Raise anthropic.max-tokens in config.yml or ask for a simpler build.");
         }
 
         StringBuilder text = new StringBuilder();
