@@ -1,0 +1,17 @@
+name: AiBuild
+version: 1.0.0
+main: com.example.aibuild.AiBuildPlugin
+api-version: "1.21"
+description: Build structures from a plain-language description using the Claude or Gemini API.
+commands:
+  ai:
+    description: Ask the AI to build something, or undo the last build.
+    usage: /ai <build <description> | undo | reload>
+    permission: aibuild.use
+permissions:
+  aibuild.use:
+    description: Use /ai build and /ai undo.
+    default: op
+  aibuild.admin:
+    description: Use /ai reload.
+    default: op

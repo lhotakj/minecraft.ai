@@ -1,0 +1,49 @@
+# Which AI designs the builds: "anthropic" (Claude) or "gemini".
+provider: gemini
+
+# Leave an api-key empty to read it from the environment variable instead
+# (recommended - keeps keys out of this file).
+anthropic:
+  api-key: ""              # or env ANTHROPIC_API_KEY
+  model: "claude-sonnet-5-5"
+  max-tokens: 16000
+
+gemini:
+  api-key: ""              # or env GEMINI_API_KEY
+  model: "gemini-3.8-flash"
+  # Gemini's "thinking" tokens count toward this limit, so keep it generous.
+  max-output-tokens: 32768
+  # Optional: low | medium | high. Empty = the model's default (medium for 3.8 Flash).
+  # Lower is faster and cheaper; higher may give better-designed builds.
+  thinking-level: ""
+
+request-timeout-seconds: 180
+
+limits:
+  # Hard caps, enforced by the plugin no matter what the AI returns.
+  max-blocks: 200000      # total blocks changed by one build
+  max-size: 120           # max width / depth of one build
+  max-height: 100         # max height of one build
+  blocks-per-tick: 4000   # lower this if the server lags while building
+  cooldown-seconds: 15    # minimum time between /ai build calls per player (API cost control)
+  undo-history: 3         # how many builds per player /ai undo can step back through
+
+placement:
+  # Empty blocks between you and the near edge of the build.
+  gap: 4
+
+# Blocks the AI is never allowed to place (Bukkit material names).
+denied-blocks:
+  - TNT
+  - LAVA
+  - BEDROCK
+  - BARRIER
+  - COMMAND_BLOCK
+  - CHAIN_COMMAND_BLOCK
+  - REPEATING_COMMAND_BLOCK
+  - STRUCTURE_BLOCK
+  - JIGSAW
+  - SPAWNER
+  - END_PORTAL
+  - END_PORTAL_FRAME
+  - NETHER_PORTAL
