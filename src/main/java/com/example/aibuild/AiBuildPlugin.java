@@ -129,7 +129,8 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
             AiProvider provider = AiProviders.create(getConfig());
             sender.sendMessage(Component.text("[AI] Active AI Provider: " + provider.label(), NamedTextColor.GRAY));
         } catch (Exception e) {
-            sender.sendMessage(Component.text("[AI] AI Provider status: Not configured (" + e.getMessage() + ")", NamedTextColor.RED));
+            sender.sendMessage(Component.text("[AI] AI Provider status: Not configured (" + e.getMessage() + ")",
+                    NamedTextColor.RED));
         }
     }
 
@@ -138,7 +139,9 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
         sender.sendMessage(Component.text("/ai build <description>", NamedTextColor.YELLOW)
                 .append(Component.text(" - Build a structure using AI", NamedTextColor.WHITE)));
         sender.sendMessage(Component.text("  Example: ", NamedTextColor.GRAY)
-                .append(Component.text("/ai build for me a house with three floors from oak wood, oak doors and a small balcony in second floor", NamedTextColor.AQUA)));
+                .append(Component.text(
+                        "/ai build for me a house with three floors from oak wood, oak doors and a small balcony in second floor",
+                        NamedTextColor.AQUA)));
         sender.sendMessage(Component.text("/ai undo", NamedTextColor.YELLOW)
                 .append(Component.text(" - Revert your most recent build", NamedTextColor.WHITE)));
         sender.sendMessage(Component.text("/ai version", NamedTextColor.YELLOW)
@@ -149,7 +152,8 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
             sender.sendMessage(Component.text("/ai reload", NamedTextColor.YELLOW)
                     .append(Component.text(" - Reload configuration & deny-list", NamedTextColor.WHITE)));
         }
-        sender.sendMessage(Component.text("Tip: Stand on flat ground facing open terrain before building.", NamedTextColor.GRAY));
+        sender.sendMessage(
+                Component.text("Tip: Stand on flat ground facing open terrain before building.", NamedTextColor.GRAY));
     }
 
     // ---------------------------------------------------------------- /ai build
@@ -206,7 +210,8 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
                     getLogger().info(status);
                     runSync(() -> send(id, status, NamedTextColor.GRAY));
                 });
-                getLogger().info("Received response from " + provider.label() + " (" + reply.length() + " chars). Parsing plan JSON...");
+                getLogger().info("Received response from " + provider.label() + " (" + reply.length()
+                        + " chars). Parsing plan JSON...");
                 JsonObject plan = extractJson(reply);
                 runSync(() -> startBuild(id, world, where, plan, maxBlocks, maxSize, maxHeight));
             } catch (Exception e) {
@@ -308,17 +313,19 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
                         history.addFirst(new UndoEntry(world, name, fx, fy, fz, previous));
                         int keep = Math.max(1, getConfig().getInt("limits.undo-history", 3));
                         while (history.size() > keep) {
-                            history.removeLast();
-                        }
-                        busy.remove(id);
-                        getLogger().info("Build completed: " + name + " (" + placed + " blocks placed).");
-                        send(id, "Done: " + name + " (" + placed + " blocks changed). /ai undo reverts it.",
-                                NamedTextColor.GREEN);
-                    },
-                    error -> {
-                        busy.remove(id);
-                        getLogger().warning("Building failed: " + error.getMessage());
-                        send(id, "Building stopped because of an error (see the server log).", NamedTextColor.RED);
+                          }
+
+    
+        busy.remove(id);
+        getLogger().info("Build completed: " + name + " (" + placed + 
+        send(id, "Done: " + name + " (" + placed + " blocks changed). /ai undo reverts it.",
+                NamedTextolo.GRE       
+       },
+    
+                error ->
+                    busy.remove(id);
+                    getLogger().warning("Building failed: " + error.getMessage()
+                    send(id, "Building stopped because of an error (see the server log).", NamedTextColor.RED);
                     }).runTaskTimer(this, 1L, 1L);
         } catch (BuildPlanner.PlanException e) {
             busy.remove(id);

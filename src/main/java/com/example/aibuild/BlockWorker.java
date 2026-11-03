@@ -12,10 +12,14 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Places (or restores) blocks a few thousand per tick so a big build never stalls the server.
+ * Places (or restores) blocks a few thousand per tick so a big build never
+ * stalls the server.
  *
- * <p>For a build, pass a {@code previousOut} array: each block that actually changes has its old
- * state stored there, which is what {@code /ai undo} later restores. For an undo, pass
+ * <p>
+ * For a build, pass a {@code previousOut} array: each block that actually
+ * changes has its old
+ * state stored there, which is what {@code /ai undo} later restores. For an
+ * undo, pass
  * {@code null}; entries of {@code target} that are null are skipped.
  */
 final class BlockWorker extends BukkitRunnable {
@@ -33,8 +37,8 @@ final class BlockWorker extends BukkitRunnable {
     private int cursor;
 
     BlockWorker(World world, int[] xs, int[] ys, int[] zs, BlockData[] target,
-                List<BuildPlanner.ItemInfo>[] items, BlockData[] previousOut,
-                int perTick, Runnable onDone, Consumer<RuntimeException> onError) {
+            List<BuildPlanner.ItemInfo>[] items, BlockData[] previousOut,
+            int perTick, Runnable onDone, Consumer<RuntimeException> onError) {
         this.world = world;
         this.xs = xs;
         this.ys = ys;
@@ -48,7 +52,7 @@ final class BlockWorker extends BukkitRunnable {
     }
 
     BlockWorker(World world, int[] xs, int[] ys, int[] zs, BlockData[] target, BlockData[] previousOut,
-                int perTick, Runnable onDone, Consumer<RuntimeException> onError) {
+            int perTick, Runnable onDone, Consumer<RuntimeException> onError) {
         this(world, xs, ys, zs, target, null, previousOut, perTick, onDone, onError);
     }
 
