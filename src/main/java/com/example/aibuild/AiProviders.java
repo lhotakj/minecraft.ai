@@ -23,7 +23,7 @@ final class AiProviders {
                     timeout);
             case "gemini", "google" -> new GeminiClient(
                     key(cfg.getString("gemini.api-key", ""), "GEMINI_API_KEY", "gemini.api-key"),
-                    parseModels(getSetting(cfg.getString("gemini.model", ""), "GEMINI_MODEL", "gemini-2.5-flash gemini-2.0-flash gemini-1.5-flash")),
+                    parseModels(getSetting(cfg.getString("gemini.model", ""), "GEMINI_MODEL", "gemini-3.8-flash gemini-3.7-flash gemini-3.5-flash")),
                     cfg.getInt("gemini.max-output-tokens", 32768),
                     cfg.getString("gemini.thinking-level", "").trim().toLowerCase(Locale.ROOT),
                     timeout);

@@ -28,7 +28,7 @@ final class GeminiClient implements AiProvider {
 
     GeminiClient(String apiKey, List<String> models, int maxOutputTokens, String thinkingLevel, int timeoutSeconds) {
         this.apiKey = apiKey;
-        this.models = models == null || models.isEmpty() ? List.of("gemini-2.5-flash") : models;
+        this.models = models == null || models.isEmpty() ? List.of("gemini-3.8-flash") : models;
         this.maxOutputTokens = maxOutputTokens;
         this.thinkingLevel = thinkingLevel;
         this.timeoutSeconds = Math.max(10, timeoutSeconds);
@@ -52,22 +52,36 @@ final class GeminiClient implements AiProvider {
             String model = rawModel.startsWith("models/") ? rawModel.substring("models/".length()) : rawModel;
             statusListener.accept("Calling Gemini API with model '" + model + "' (" + (i + 1) + "/" + models.size() + ")...");
             long start = System.currentTimeMillis();
-            try {
-                String reply = callGenerateContent(model, system, user, perModelTimeout);
-                long elapsed = System.currentTimeMillis() - start;
-                statusListener.accept("Received response from '" + model + "' in " + elapsed + "ms");
-                return reply;
-            } catch (Exception e) {
-                long elapsed = System.currentTimeMillis() - start;
-                String msg = e.getMessage() != null ? e.getMessage() : e.toString();
-                errors.add(model + " (" + elapsed + "ms): " + msg);
-                if (i + 1 < models.size()) {
-                    String next = models.get(i + 1);
-                    statusListener.accept("Model '" + model + "' failed (" + msg + "). Failing over to '" + next + "'...");
+            boolean retried = false;
+            while (true) {
+                try {
+                    String reply = callGenerateContent(model, system, user, perModelTimeout);
+                    long elapsed = System.currentTimeMillis() - start;
+                    statusListener.accept("Received response from '" + model + "' in " + elapsed + "ms");
+                    return reply;
+                } catch (Exception e) {
+                    long elapsed = System.currentTimeMillis() - start;
+                    String msg = e.getMessage() != null ? e.getMessage() : e.toString();
+                    if (!retried && isTransient(msg)) {
+                        retried = true;
+                        statusListener.accept("Model '" + model + "' experienced temporary high demand (HTTP 503/429), retrying in 2s...");
+                        Thread.sleep(2000);
+                        continue;
+                    }
+                    errors.add(model + " (" + elapsed + "ms): " + msg);
+                    if (i + 1 < models.size()) {
+                        String next = models.get(i + 1);
+                        statusListener.accept("Model '" + model + "' failed (" + msg + "). Failing over to '" + next + "'...");
+                    }
+                    break;
                 }
             }
         }
         throw new IOException("All configured Gemini models failed:\n- " + String.join("\n- ", errors));
+    }
+
+    private static boolean isTransient(String msg) {
+        return msg.contains("503") || msg.contains("high demand") || msg.contains("429") || msg.contains("RESOURCE_EXHAUSTED");
     }
 
     private String callGenerateContent(String model, String system, String user, int timeout) throws IOException, InterruptedException {

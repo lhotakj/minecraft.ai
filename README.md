@@ -55,7 +55,7 @@ Set the variables on the machine or container running the server:
 # For Gemini:
 export GEMINI_API_KEY="AIzaSy..."
 # Optional fallback model chain (space or comma-delimited):
-export GEMINI_MODEL="gemini-2.5-flash gemini-2.0-flash gemini-1.5-flash"
+export GEMINI_MODEL="gemini-3.8-flash gemini-3.7-flash gemini-3.5-flash"
 
 # For Claude:
 export ANTHROPIC_API_KEY="sk-ant-..."
@@ -70,7 +70,7 @@ provider: gemini
 gemini:
   api-key: "AIzaSy..."
   # Space/comma-delimited list of models with automatic failover if one hits 503/429
-  model: "gemini-2.5-flash gemini-2.0-flash gemini-1.5-flash"
+  model: "gemini-3.8-flash gemini-3.7-flash gemini-3.5-flash"
   max-output-tokens: 32768
   thinking-level: "" # optional: low | medium | high
 

@@ -11,28 +11,28 @@ class AiProvidersTest {
 
     @Test
     void testParseModelsSpaceDelimited() {
-        List<String> models = AiProviders.parseModels("gemini-2.5-flash gemini-2.0-flash gemini-1.5-flash");
+        List<String> models = AiProviders.parseModels("gemini-3.8-flash gemini-3.7-flash gemini-3.5-flash");
         assertEquals(3, models.size());
-        assertEquals("gemini-2.5-flash", models.get(0));
-        assertEquals("gemini-2.0-flash", models.get(1));
-        assertEquals("gemini-1.5-flash", models.get(2));
+        assertEquals("gemini-3.8-flash", models.get(0));
+        assertEquals("gemini-3.7-flash", models.get(1));
+        assertEquals("gemini-3.5-flash", models.get(2));
     }
 
     @Test
     void testParseModelsCommaDelimited() {
-        List<String> models = AiProviders.parseModels("gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash");
+        List<String> models = AiProviders.parseModels("gemini-3.8-flash, gemini-3.7-flash, gemini-3.5-flash");
         assertEquals(3, models.size());
-        assertEquals("gemini-2.5-flash", models.get(0));
-        assertEquals("gemini-2.0-flash", models.get(1));
-        assertEquals("gemini-1.5-flash", models.get(2));
+        assertEquals("gemini-3.8-flash", models.get(0));
+        assertEquals("gemini-3.7-flash", models.get(1));
+        assertEquals("gemini-3.5-flash", models.get(2));
     }
 
     @Test
     void testParseModelsHandlesDuplicatesAndExtraWhitespace() {
-        List<String> models = AiProviders.parseModels("  gemini-2.5-flash   gemini-2.5-flash \n gemini-2.0-flash  ");
+        List<String> models = AiProviders.parseModels("  gemini-3.8-flash   gemini-3.8-flash \n gemini-3.7-flash  ");
         assertEquals(2, models.size());
-        assertEquals("gemini-2.5-flash", models.get(0));
-        assertEquals("gemini-2.0-flash", models.get(1));
+        assertEquals("gemini-3.8-flash", models.get(0));
+        assertEquals("gemini-3.7-flash", models.get(1));
     }
 
     @Test
@@ -44,11 +44,11 @@ class AiProvidersTest {
 
     @Test
     void testGeminiClientLabel() {
-        GeminiClient single = new GeminiClient("key", List.of("gemini-2.5-flash"), 1000, "", 30);
-        assertEquals("gemini-2.5-flash", single.label());
+        GeminiClient single = new GeminiClient("key", List.of("gemini-3.8-flash"), 1000, "", 30);
+        assertEquals("gemini-3.8-flash", single.label());
 
-        GeminiClient multi = new GeminiClient("key", List.of("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"), 1000, "", 30);
-        assertEquals("gemini-2.5-flash (+2 fallbacks)", multi.label());
+        GeminiClient multi = new GeminiClient("key", List.of("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash"), 1000, "", 30);
+        assertEquals("gemini-3.8-flash (+2 fallbacks)", multi.label());
     }
 
     @Test
