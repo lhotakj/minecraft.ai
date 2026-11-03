@@ -5,15 +5,20 @@ provider: gemini
 # (recommended - keeps keys out of this file).
 anthropic:
   api-key: ""              # or env ANTHROPIC_API_KEY
-  model: "claude-sonnet-5-5"
+  # Single model or space/comma-delimited fallback list (or env ANTHROPIC_MODEL)
+  model: "claude-sonnet-5-5 claude-3-5-haiku-latest"
   max-tokens: 16000
 
 gemini:
   api-key: ""              # or env GEMINI_API_KEY
-  model: "gemini-3.8-flash"
+  # You can specify a single model or a space/comma-delimited list of models.
+  # If the first model fails (e.g. HTTP 503 high demand or HTTP 429 rate limit),
+  # the plugin automatically fails over to the next model in the list.
+  # Can also be set via the GEMINI_MODEL environment variable.
+  model: "gemini-2.5-flash gemini-2.0-flash gemini-1.5-flash"
   # Gemini's "thinking" tokens count toward this limit, so keep it generous.
   max-output-tokens: 32768
-  # Optional: low | medium | high. Empty = the model's default (medium for 3.8 Flash).
+  # Optional: low | medium | high. Empty = the model's default.
   # Lower is faster and cheaper; higher may give better-designed builds.
   thinking-level: ""
 

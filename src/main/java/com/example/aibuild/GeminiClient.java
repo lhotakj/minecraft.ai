@@ -11,34 +11,66 @@ import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 
-/** Gemini, via the Gemini API's models.generateContent endpoint. */
+/** Gemini, via the Gemini API's models.generateContent endpoint with automatic model failover. */
 final class GeminiClient implements AiProvider {
 
     private static final String BASE = "https://generativelanguage.googleapis.com/v1beta/models/";
 
     private final String apiKey;
-    private final String model;
+    private final List<String> models;
     private final int maxOutputTokens;
     private final String thinkingLevel;
     private final int timeoutSeconds;
 
-    /** @param thinkingLevel "low", "medium" or "high"; empty means "leave it to the model's default". */
-    GeminiClient(String apiKey, String model, int maxOutputTokens, String thinkingLevel, int timeoutSeconds) {
+    GeminiClient(String apiKey, List<String> models, int maxOutputTokens, String thinkingLevel, int timeoutSeconds) {
         this.apiKey = apiKey;
-        this.model = model.startsWith("models/") ? model.substring("models/".length()) : model;
+        this.models = models == null || models.isEmpty() ? List.of("gemini-2.5-flash") : models;
         this.maxOutputTokens = maxOutputTokens;
         this.thinkingLevel = thinkingLevel;
-        this.timeoutSeconds = timeoutSeconds;
+        this.timeoutSeconds = Math.max(10, timeoutSeconds);
     }
 
     @Override
     public String label() {
-        return model;
+        if (models.size() == 1) {
+            return models.get(0);
+        }
+        return models.get(0) + " (+" + (models.size() - 1) + " fallbacks)";
     }
 
     @Override
-    public String complete(String system, String user) throws IOException, InterruptedException {
+    public String complete(String system, String user, Consumer<String> statusListener) throws IOException, InterruptedException {
+        List<String> errors = new ArrayList<>();
+        int perModelTimeout = Math.min(timeoutSeconds, Math.max(30, timeoutSeconds / Math.max(1, models.size())));
+
+        for (int i = 0; i < models.size(); i++) {
+            String rawModel = models.get(i);
+            String model = rawModel.startsWith("models/") ? rawModel.substring("models/".length()) : rawModel;
+            statusListener.accept("Calling Gemini API with model '" + model + "' (" + (i + 1) + "/" + models.size() + ")...");
+            long start = System.currentTimeMillis();
+            try {
+                String reply = callGenerateContent(model, system, user, perModelTimeout);
+                long elapsed = System.currentTimeMillis() - start;
+                statusListener.accept("Received response from '" + model + "' in " + elapsed + "ms");
+                return reply;
+            } catch (Exception e) {
+                long elapsed = System.currentTimeMillis() - start;
+                String msg = e.getMessage() != null ? e.getMessage() : e.toString();
+                errors.add(model + " (" + elapsed + "ms): " + msg);
+                if (i + 1 < models.size()) {
+                    String next = models.get(i + 1);
+                    statusListener.accept("Model '" + model + "' failed (" + msg + "). Failing over to '" + next + "'...");
+                }
+            }
+        }
+        throw new IOException("All configured Gemini models failed:\n- " + String.join("\n- ", errors));
+    }
+
+    private String callGenerateContent(String model, String system, String user, int timeout) throws IOException, InterruptedException {
         JsonObject systemInstruction = new JsonObject();
         systemInstruction.add("parts", parts(system));
 
@@ -64,7 +96,7 @@ final class GeminiClient implements AiProvider {
 
         URI uri = URI.create(BASE + URLEncoder.encode(model, StandardCharsets.UTF_8) + ":generateContent");
         HttpRequest request = HttpRequest.newBuilder(uri)
-                .timeout(Duration.ofSeconds(timeoutSeconds))
+                .timeout(Duration.ofSeconds(timeout))
                 .header("content-type", "application/json")
                 .header("x-goog-api-key", apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))

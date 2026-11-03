@@ -50,13 +50,16 @@ The plugin sends the prompt to an advanced AI model (Google Gemini or Anthropic 
 2. Configure your AI API key using **either** method:
 
 ### Method A: Environment Variable (Recommended)
-Set the variable on the machine or container running the server:
+Set the variables on the machine or container running the server:
 ```bash
 # For Gemini:
 export GEMINI_API_KEY="AIzaSy..."
+# Optional fallback model chain (space or comma-delimited):
+export GEMINI_MODEL="gemini-2.5-flash gemini-2.0-flash gemini-1.5-flash"
 
 # For Claude:
 export ANTHROPIC_API_KEY="sk-ant-..."
+export ANTHROPIC_MODEL="claude-sonnet-5-5 claude-3-5-haiku-latest"
 ```
 
 ### Method B: In `plugins/AiBuild/config.yml`
@@ -66,13 +69,14 @@ provider: gemini
 
 gemini:
   api-key: "AIzaSy..."
-  model: "gemini-3.8-flash"
+  # Space/comma-delimited list of models with automatic failover if one hits 503/429
+  model: "gemini-2.5-flash gemini-2.0-flash gemini-1.5-flash"
   max-output-tokens: 32768
   thinking-level: "" # optional: low | medium | high
 
 anthropic:
   api-key: "sk-ant-..."
-  model: "claude-sonnet-5-5"
+  model: "claude-sonnet-5-5 claude-3-5-haiku-latest"
   max-tokens: 16000
 ```
 

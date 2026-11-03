@@ -124,6 +124,12 @@ if (!name.contains(":")) {
 }
 ```
 
+### Rule 10: Multi-Model Failover & Real-Time Telemetry
+Cloud AI endpoints occasionally return HTTP 503 (high demand) or HTTP 429 (rate limits). Never leave players or server operators waiting in the dark:
+1. Accept ordered, space-delimited fallback model chains (e.g., `gemini-2.5-flash gemini-2.0-flash gemini-1.5-flash`).
+2. Implement per-model timeouts and automatic failover on network/HTTP errors.
+3. Emit real-time progress callbacks to both server logs (`getLogger().info`) and in-game chat messages (`send(id, ...)`).
+
 ---
 
 ## 5. Modern Java 21 Standards

@@ -197,16 +197,20 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
 
         World world = player.getWorld();
         Location where = player.getLocation();
-        getLogger().info(player.getName() + " asked for: " + description);
+        getLogger().info("[AiBuild] " + player.getName() + " requested build: \"" + description + "\" using " + provider.label());
         send(id, "Asking " + provider.label() + " to design: " + description, NamedTextColor.GRAY);
 
         getServer().getScheduler().runTaskAsynchronously(this, () -> {
             try {
-                String reply = provider.complete(system, userMessage);
+                String reply = provider.complete(system, userMessage, status -> {
+                    getLogger().info("[AiBuild] " + status);
+                    runSync(() -> send(id, status, NamedTextColor.GRAY));
+                });
+                getLogger().info("[AiBuild] Received response from " + provider.label() + " (" + reply.length() + " chars). Parsing plan JSON...");
                 JsonObject plan = extractJson(reply);
                 runSync(() -> startBuild(id, world, where, plan, maxBlocks, maxSize, maxHeight));
             } catch (Exception e) {
-                getLogger().warning("AI request failed: " + e);
+                getLogger().warning("[AiBuild] AI request failed: " + e.getMessage());
                 runSync(() -> {
                     busy.remove(id);
                     send(id, "The AI request failed: " + e.getMessage(), NamedTextColor.RED);
@@ -285,6 +289,7 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
 
             send(id, "Plan ready: " + name + " (" + sizeX + "x" + sizeY + "x" + sizeZ + ", " + count
                     + " blocks). Building...", NamedTextColor.GRAY);
+            getLogger().info("[AiBuild] Plan validated: " + name + " (" + sizeX + "x" + sizeY + "x" + sizeZ + ", " + count + " blocks). Starting block placement...");
 
             new BlockWorker(world, fx, fy, fz, fd, previous, getConfig().getInt("limits.blocks-per-tick", 4000),
                     () -> {
@@ -301,16 +306,18 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
                             history.removeLast();
                         }
                         busy.remove(id);
+                        getLogger().info("[AiBuild] Build completed: " + name + " (" + placed + " blocks placed).");
                         send(id, "Done: " + name + " (" + placed + " blocks changed). /ai undo reverts it.",
                                 NamedTextColor.GREEN);
                     },
                     error -> {
                         busy.remove(id);
-                        getLogger().warning("Building failed: " + error);
+                        getLogger().warning("[AiBuild] Building failed: " + error.getMessage());
                         send(id, "Building stopped because of an error (see the server log).", NamedTextColor.RED);
                     }).runTaskTimer(this, 1L, 1L);
         } catch (BuildPlanner.PlanException e) {
             busy.remove(id);
+            getLogger().warning("[AiBuild] Invalid build plan: " + e.getMessage());
             send(id, "Could not build that: " + e.getMessage(), NamedTextColor.RED);
         }
     }

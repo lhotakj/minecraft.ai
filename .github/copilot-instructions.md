@@ -20,4 +20,3 @@ You are an expert Minecraft plugin developer working on the **AiBuild** reposito
 6. **Testing**:
    - Maintain unit tests in `src/test/java/com/example/aibuild/`.
    - Decouple Bukkit dependencies using `Function<String, BlockData>` so planners can be verified in standard JUnit 5 suites.
-
