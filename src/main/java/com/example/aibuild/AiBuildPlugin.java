@@ -313,8 +313,12 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
             var reader = new com.google.gson.stream.JsonReader(new java.io.StringReader(json));
             reader.setLenient(true);
             return JsonParser.parseReader(reader).getAsJsonObject();
-        } catch (Exception e) {
-            return JsonParser.parseString(json).getAsJsonObject();
+        } catch (Exception ignored) {
+            // Remove trailing commas before closing braces/brackets (common LLM artifact)
+            String sanitized = json.replaceAll(",\\s*([\\]}])", "$1");
+            var reader = new com.google.gson.stream.JsonReader(new java.io.StringReader(sanitized));
+            reader.setLenient(true);
+            return JsonParser.parseReader(reader).getAsJsonObject();
         }
     }
 
