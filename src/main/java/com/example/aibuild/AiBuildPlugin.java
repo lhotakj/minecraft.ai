@@ -313,19 +313,17 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
                         history.addFirst(new UndoEntry(world, name, fx, fy, fz, previous));
                         int keep = Math.max(1, getConfig().getInt("limits.undo-history", 3));
                         while (history.size() > keep) {
-                          }
-
-    
-        busy.remove(id);
-        getLogger().info("Build completed: " + name + " (" + placed + 
-        send(id, "Done: " + name + " (" + placed + " blocks changed). /ai undo reverts it.",
-                NamedTextolo.GRE       
-       },
-    
-                error ->
-                    busy.remove(id);
-                    getLogger().warning("Building failed: " + error.getMessage()
-                    send(id, "Building stopped because of an error (see the server log).", NamedTextColor.RED);
+                            history.removeLast();
+                        }
+                        busy.remove(id);
+                        getLogger().info("Build completed: " + name + " (" + placed + " blocks placed).");
+                        send(id, "Done: " + name + " (" + placed + " blocks changed). /ai undo reverts it.",
+                                NamedTextColor.GREEN);
+                    },
+                    error -> {
+                        busy.remove(id);
+                        getLogger().warning("Building failed: " + error.getMessage());
+                        send(id, "Building stopped because of an error (see the server log).", NamedTextColor.RED);
                     }).runTaskTimer(this, 1L, 1L);
         } catch (BuildPlanner.PlanException e) {
             busy.remove(id);
