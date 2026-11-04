@@ -30,7 +30,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * /ai build &lt;description&gt; - asks an AI model (Claude or Gemini) for a
+ * /ai build &lt;description&gt; - asks an AI model (Gemini, Claude, OpenAI, or
+ * OpenRouter) for a
  * JSON build plan, validates it and builds it in
  * front of the player. /ai undo reverts the most recent builds.
  */
@@ -299,7 +300,8 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
 
             send(id, "Plan ready: " + name + " (" + sizeX + "x" + sizeY + "x" + sizeZ + ", " + count
                     + " blocks). Building...", NamedTextColor.GRAY);
-            getLogger().info("Plan validated: " + name + " (" + sizeX + "x" + sizeY + "x" + sizeZ + ", " + count + " blocks). Starting block placement...");
+            getLogger().info("Plan validated: " + name + " (" + sizeX + "x" + sizeY + "x" + sizeZ + ", " + count
+                    + " blocks). Starting block placement...");
 
             new BlockWorker(world, fx, fy, fz, fd, fi, previous, getConfig().getInt("limits.blocks-per-tick", 4000),
                     () -> {

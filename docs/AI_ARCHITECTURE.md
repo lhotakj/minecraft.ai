@@ -19,7 +19,7 @@ This document details the complete end-to-end architecture of the **AiBuild** pl
      • Capture player location, yaw direction, and target world
            │
            ▼ (Asynchronous Thread)
-  [AiProvider (GeminiClient / AnthropicClient)]
+  [AiProvider (GeminiClient / AnthropicClient / OpenAiClient / OpenRouterClient)]
      • Format system prompt with server limits
      • Issue non-blocking HTTP POST via java.net.http.HttpClient
      • Receive raw response text
@@ -102,7 +102,7 @@ When `startBuild` prepares to place the blocks:
 Building large structures in Minecraft can easily freeze a server if not implemented carefully. AiBuild achieves zero-lag execution through three core design choices:
 
 1. **Off-Thread Network I/O**:
-   All communication with Google Gemini or Anthropic Claude runs inside an asynchronous Bukkit task (`runTaskAsynchronously`). The Minecraft server loop is never blocked waiting for an HTTP response.
+   All communication with AI providers (Google Gemini, Anthropic Claude, OpenAI, or OpenRouter) runs inside an asynchronous Bukkit task (`runTaskAsynchronously`). The Minecraft server loop is never blocked waiting for an HTTP response.
 
 2. **Throttled Tick Worker (`BlockWorker`)**:
    Instead of updating 50,000 blocks in a single server tick (which causes a severe lag spike and TPS drop), `BlockWorker` runs as a recurring synchronous `BukkitRunnable` placing up to `limits.blocks-per-tick` (default 4,000) blocks per tick.

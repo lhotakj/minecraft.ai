@@ -4,14 +4,14 @@
 - **Name**: AiBuild
 - **Platform**: PaperMC (Minecraft 1.21.x)
 - **Language**: Java 21 (Maven build system)
-- **Purpose**: Connects AI models (Gemini & Claude) to Minecraft to turn natural language prompts into structural builds.
+- **Purpose**: Connects AI models (Gemini, Claude, OpenAI, and OpenRouter) to Minecraft to turn natural language prompts into structural builds.
 
 ## Key Files
 - `src/main/java/com/example/aibuild/AiBuildPlugin.java`: Main plugin entry point, command handling (`/ai build`, `/ai undo`, `/ai reload`), coordinate transformation, and async task orchestration.
 - `src/main/java/com/example/aibuild/Prompts.java`: System prompt engineering and primitive specification sent to AI providers.
 - `src/main/java/com/example/aibuild/BuildPlanner.java`: In-memory geometry calculation, bounds checking, and blockstate validation.
 - `src/main/java/com/example/aibuild/BlockWorker.java`: Scheduled tick worker placing blocks throttled per tick without physics updates.
-- `src/main/java/com/example/aibuild/GeminiClient.java` & `AnthropicClient.java`: HTTP REST clients for Gemini and Claude.
+- `src/main/java/com/example/aibuild/GeminiClient.java`, `AnthropicClient.java`, `OpenAiClient.java`, `OpenRouterClient.java`, & `ChainedAiProvider.java`: HTTP REST clients and provider failover chaining for Gemini, Claude, OpenAI, and OpenRouter.
 - `docs/schemas/build-plan.schema.json`: Formal JSON Schema for build operations.
 - `AI_HARNESS.md`: Full architectural and performance harness guidelines.
 

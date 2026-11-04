@@ -1,25 +1,54 @@
-# Which AI designs the builds: "anthropic" (Claude) or "gemini".
+# Which AI designs the builds: "gemini", "anthropic" (Claude), "openai", or "openrouter".
 provider: gemini
+
+# Optional: Set the failover order of AI providers (space or comma-delimited list).
+# Each provider will try its configured models in order before failing over to the next provider.
+# Example: "openrouter gemini" or "openrouter, openai, gemini"
+# Can also be set via the PROVIDER_ORDER environment variable (or env AI_PROVIDER_ORDER).
+# If left empty, the single 'provider' setting above is used.
+provider-order: ""
 
 # Leave an api-key empty to read it from the environment variable instead
 # (recommended - keeps keys out of this file).
-anthropic:
-  api-key: ""              # or env ANTHROPIC_API_KEY
-  # Single model or space/comma-delimited fallback list (or env ANTHROPIC_MODEL)
-  model: "claude-sonnet-5-5 claude-3-5-haiku-latest"
-  max-tokens: 16000
-
 gemini:
   api-key: ""              # or env GEMINI_API_KEY
   # You can specify a single model or a space/comma-delimited list of models.
   # If the first model fails (e.g. HTTP 503 high demand or HTTP 429 rate limit),
   # the plugin automatically retries transient errors and fails over to the next model in the list.
   # Can also be set via the GEMINI_MODEL environment variable.
-  model: "gemini-3.8-flash gemini-3.7-flash gemini-3.5-flash"
+  model: "gemini-3.5-flash gemini-3.8-flash gemini-3.7-flash"
   # Gemini's "thinking" tokens count toward this limit, so keep it generous.
   max-output-tokens: 32768
   # Optional: low | medium | high. Empty = the model's default.
   # Lower is faster and cheaper; higher may give better-designed builds.
+  thinking-level: ""
+
+anthropic:
+  api-key: ""              # or env ANTHROPIC_API_KEY
+  # Single model or space/comma-delimited fallback list (or env ANTHROPIC_MODEL)
+  model: "claude-sonnet-5-5 claude-3-5-haiku-latest"
+  max-tokens: 16000
+  # Optional: low | medium | high. Empty = standard generation (thinking disabled).
+  # Supported on models with extended thinking (e.g. Claude 3.7 Sonnet).
+  thinking-level: ""
+
+openai:
+  api-key: ""              # or env OPENAI_API_KEY
+  # Single model or space/comma-delimited fallback list (or env OPENAI_MODEL)
+  model: "gpt-4o gpt-4o-mini"
+  max-tokens: 16000
+  # Optional: low | medium | high. Empty = model's default.
+  # Supported on reasoning models (e.g. o1, o3-mini).
+  thinking-level: ""
+
+openrouter:
+  api-key: ""              # or env OPENROUTER_API_KEY
+  # OpenRouter uses 'provider/model-name' format.
+  # Space or comma-delimited fallback list (or env OPENROUTER_MODEL)
+  model: "openrouter/free google/gemma-4-26b-a4b-it:free"
+  max-tokens: 16000
+  # Optional: low | medium | high. Empty = model's default.
+  # OpenRouter maps this unified reasoning parameter to the underlying model.
   thinking-level: ""
 
 request-timeout-seconds: 180

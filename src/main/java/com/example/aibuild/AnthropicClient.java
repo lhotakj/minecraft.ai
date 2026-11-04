@@ -12,9 +12,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 
-/** Claude, via the Anthropic Messages API with model failover support. */
+/**
+ * Claude, via the Anthropic Messages API with model failover and extended
+ * thinking support.
+ */
 final class AnthropicClient implements AiProvider {
 
     private static final URI ENDPOINT = URI.create("https://api.anthropic.com/v1/messages");
@@ -22,12 +26,18 @@ final class AnthropicClient implements AiProvider {
     private final String apiKey;
     private final List<String> models;
     private final int maxTokens;
+    private final String thinkingLevel;
     private final int timeoutSeconds;
 
     AnthropicClient(String apiKey, List<String> models, int maxTokens, int timeoutSeconds) {
+        this(apiKey, models, maxTokens, "", timeoutSeconds);
+    }
+
+    AnthropicClient(String apiKey, List<String> models, int maxTokens, String thinkingLevel, int timeoutSeconds) {
         this.apiKey = apiKey;
         this.models = models == null || models.isEmpty() ? List.of("claude-sonnet-5-5") : models;
         this.maxTokens = maxTokens;
+        this.thinkingLevel = thinkingLevel == null ? "" : thinkingLevel.trim().toLowerCase(Locale.ROOT);
         this.timeoutSeconds = Math.max(10, timeoutSeconds);
     }
 
@@ -83,6 +93,21 @@ final class AnthropicClient implements AiProvider {
         body.addProperty("system", system);
         body.add("messages", messages);
 
+        if (!thinkingLevel.isEmpty()) {
+            int budgetTokens = switch (thinkingLevel) {
+                case "low" -> Math.min(2048, Math.max(1024, maxTokens / 4));
+                case "medium" -> Math.min(8192, Math.max(1024, maxTokens / 2));
+                case "high" -> Math.min(16384, Math.max(1024, (int) (maxTokens * 0.75)));
+                default -> 0;
+            };
+            if (budgetTokens >= 1024 && maxTokens > budgetTokens) {
+                JsonObject thinking = new JsonObject();
+                thinking.addProperty("type", "enabled");
+                thinking.addProperty("budget_tokens", budgetTokens);
+                body.add("thinking", thinking);
+            }
+        }
+
         HttpRequest request = HttpRequest.newBuilder(ENDPOINT)
                 .timeout(Duration.ofSeconds(timeout))
                 .header("content-type", "application/json")
@@ -95,7 +120,7 @@ final class AnthropicClient implements AiProvider {
         JsonElement stop = json.get("stop_reason");
         if (stop != null && !stop.isJsonNull() && "max_tokens".equals(stop.getAsString())) {
             throw new IOException(
-                    "The AI's reply was cut off. Raise anthropic.max-tokens in config.yml or ask for a simpler build.");
+                    "The AI's reply was cut off. Tokens count toward the limit: raise anthropic.max-tokens in config.yml, lower anthropic.thinking-level, or ask for a simpler build.");
         }
 
         StringBuilder text = new StringBuilder();

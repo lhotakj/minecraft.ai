@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>AiBuild</name>
-    <description>PaperMC plugin connecting AI models (Gemini &amp; Claude) to Minecraft for natural language structure building.</description>
+    <description>PaperMC plugin connecting AI models (Gemini, Claude, OpenAI, &amp; OpenRouter) to Minecraft for natural language structure building.</description>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
@@ -58,6 +58,7 @@
                 <version>3.13.0</version>
                 <configuration>
                     <release>21</release>
+                    <fork>true</fork>
                 </configuration>
             </plugin>
             <plugin>

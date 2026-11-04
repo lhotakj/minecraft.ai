@@ -19,9 +19,11 @@ The plugin sends the prompt to an advanced AI model (Google Gemini or Anthropic 
 
 - **Conversational Building**: Natural language input with tolerance for phrasing and minor typos (e.g. "housw" -> house).
 - **Complex Architectures**: Understands multi-floor structures, doors (matching top and bottom halves), balconies, windows, roofs, stairs, and decorative details.
-- **Dual AI Providers**:
+- **Multi AI Providers**:
   - **Google Gemini** (Gemini 3.8 Flash, 2.5 Flash, 2.0 Flash)
   - **Anthropic Claude** (Claude Sonnet 3.5 / 3.7)
+  - **OpenAI** (GPT-4o, GPT-4o-mini, o1, o3-mini)
+  - **OpenRouter** (Multi-model gateway: DeepSeek-R1, Llama 3, Gemini, Claude, OpenAI)
 - **Zero-Lag Server Execution**: Places up to 4,000 blocks per tick without physics recalculations, preventing TPS drops.
 - **Instant Undo**: `/ai undo` restores the previous world state in case you want to rebuild or adjust placement.
 - **Safety Envelope**: Configurable maximum blocks, dimensions, player cooldowns, and a forbidden materials deny-list (TNT, lava, bedrock, command blocks).
@@ -52,20 +54,45 @@ The plugin sends the prompt to an advanced AI model (Google Gemini or Anthropic 
 ### Method A: Environment Variable (Recommended)
 Set the variables on the machine or container running the server:
 ```bash
+# Optional: Select provider ("gemini", "anthropic", "openai", or "openrouter"; defaults to "gemini")
+export AI_PROVIDER="gemini"
+
+# Optional: Provider failover chain (tries openrouter first, then gemini):
+export PROVIDER_ORDER="openrouter gemini"
+
 # For Gemini:
 export GEMINI_API_KEY="AIzaSy..."
-# Optional fallback model chain (space or comma-delimited):
 export GEMINI_MODEL="gemini-3.8-flash gemini-3.7-flash gemini-3.5-flash"
+export GEMINI_MAX_OUTPUT_TOKENS="32768"
+export GEMINI_THINKING_LEVEL="medium"   # low | medium | high
 
-# For Claude:
+# For Claude (Anthropic):
 export ANTHROPIC_API_KEY="sk-ant-..."
 export ANTHROPIC_MODEL="claude-sonnet-5-5 claude-3-5-haiku-latest"
+export ANTHROPIC_MAX_TOKENS="16000"
+export ANTHROPIC_THINKING_LEVEL=""      # low | medium | high (Claude 3.7+ extended thinking)
+
+# For OpenAI:
+export OPENAI_API_KEY="sk-proj-..."
+export OPENAI_MODEL="gpt-4o gpt-4o-mini" # or reasoning models: "o3-mini gpt-4o"
+export OPENAI_MAX_TOKENS="16000"
+export OPENAI_THINKING_LEVEL="low"      # low | medium | high (for reasoning models: o1, o3-mini)
+
+# For OpenRouter:
+export OPENROUTER_API_KEY="sk-or-v1-..."
+export OPENROUTER_MODEL="google/gemini-2.5-flash openai/gpt-4o anthropic/claude-3.7-sonnet"
+export OPENROUTER_MAX_TOKENS="16000"
+export OPENROUTER_THINKING_LEVEL=""     # low | medium | high (mapped to underlying model)
 ```
 
 ### Method B: In `plugins/AiBuild/config.yml`
 ```yaml
-# Select provider: "gemini" or "anthropic"
+# Select provider: "gemini", "anthropic", "openai", or "openrouter"
 provider: gemini
+
+# Optional: Provider failover order (space or comma-delimited).
+# Each provider tries its full model chain before failing over to the next provider.
+provider-order: "openrouter gemini"
 
 gemini:
   api-key: "AIzaSy..."
@@ -78,7 +105,34 @@ anthropic:
   api-key: "sk-ant-..."
   model: "claude-sonnet-5-5 claude-3-5-haiku-latest"
   max-tokens: 16000
+  thinking-level: "" # optional: low | medium | high (extended thinking)
+
+openai:
+  api-key: "sk-proj-..."
+  model: "gpt-4o gpt-4o-mini"
+  max-tokens: 16000
+  thinking-level: "" # optional: low | medium | high (for reasoning models: o1, o3-mini)
+
+openrouter:
+  api-key: "sk-or-v1-..."
+  model: "google/gemini-2.5-flash openai/gpt-4o anthropic/claude-3.7-sonnet"
+  max-tokens: 16000
+  thinking-level: "" # optional: low | medium | high (unified reasoning effort)
 ```
+
+### 🧠 Thinking Levels (`thinking-level`)
+
+All providers support the `thinking-level` setting with three standardized options:
+- `low`: Quick reasoning pass; lower latency, fewer internal tokens used.
+- `medium`: Balanced reasoning depth for detailed architecture plans.
+- `high`: Maximum reasoning depth for intricate geometry and complex multi-structure builds.
+- `""` *(empty)*: Uses the model's default reasoning behavior (or disabled where applicable).
+
+How each provider handles thinking levels:
+- **Google Gemini**: Transmitted via `thinkingConfig.thinkingLevel`.
+- **OpenAI**: Configures `reasoning_effort` for reasoning models (`o1`, `o3-mini`, etc.).
+- **OpenRouter**: Transmitted via OpenRouter's unified `reasoning: { effort: ... }` parameter.
+- **Anthropic Claude**: Allocates an extended thinking token budget (`low` ~ 2k tokens, `medium` ~ 8k tokens, `high` ~ 16k tokens) on thinking-capable models like Claude 3.7 Sonnet.
 
 3. Run `/ai reload` in-game or from server console.
 
