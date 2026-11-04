@@ -74,12 +74,12 @@ final class BuildPlanner {
                 JsonObject o = ops.get(i).getAsJsonObject();
                 name = str(o, "op").toLowerCase(Locale.ROOT);
                 switch (name) {
-                    case "fill" -> fill(o, false);
-                    case "hollow_box" -> fill(o, true);
-                    case "ellipse" -> ellipse(o);
-                    case "arcade" -> arcade(o);
-                    case "sphere" -> sphere(o);
-                    case "setblock" -> {
+                    case "fill", "box", "cuboid", "solid_box" -> fill(o, false);
+                    case "hollow_box", "hollowbox", "shell", "room" -> fill(o, true);
+                    case "ellipse", "cylinder", "circle", "disc", "disk" -> ellipse(o);
+                    case "arcade", "arch", "arches" -> arcade(o);
+                    case "sphere", "dome", "hemisphere", "ball" -> sphere(o);
+                    case "setblock", "set_block", "block", "place" -> {
                         Pos p = new Pos(num(o, "x"), num(o, "y"), num(o, "z"));
                         BlockData d = block(o, null);
                         put(p, d);
@@ -87,6 +87,9 @@ final class BuildPlanner {
                         if (!items.isEmpty()) {
                             containerItems.put(p, items);
                         }
+                    }
+                    case "comment", "note", "meta", "info", "noop", "description" -> {
+                        // Informational operations ignored gracefully
                     }
                     default -> throw new PlanException("unknown operation '" + name + "'");
                 }
@@ -107,7 +110,7 @@ final class BuildPlanner {
 
     private void fill(JsonObject o, boolean hollow) throws PlanException {
         int x1 = num(o, "x1"), y1 = num(o, "y1"), z1 = num(o, "z1");
-        int x2 = num(o, "x2"), y2 = num(o, "y2"), z2 = num(o, "z2");
+        int x2 = num(o, "x2", x1), y2 = num(o, "y2", y1), z2 = num(o, "z2", z1);
         int minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
         int minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
         int minZ = Math.min(z1, z2), maxZ = Math.max(z1, z2);
@@ -271,7 +274,7 @@ final class BuildPlanner {
     private BlockData block(JsonObject o, String fallback) throws PlanException {
         String raw = o.has("block") && o.get("block").isJsonPrimitive() ? o.get("block").getAsString() : fallback;
         if (raw == null || raw.isBlank()) {
-            throw new PlanException("missing 'block'.");
+            raw = fallback != null && !fallback.isBlank() ? fallback : "minecraft:stone";
         }
         int braceIndex = raw.indexOf('{');
         String blockPart = braceIndex >= 0 ? raw.substring(0, braceIndex) : raw;
@@ -284,17 +287,256 @@ final class BuildPlanner {
         if (cached != null) {
             return cached;
         }
-        BlockData data;
-        try {
-            data = blockParser.apply(blockPart);
-        } catch (IllegalArgumentException e) {
-            throw new PlanException("unknown block '" + blockPart + "'.");
-        }
+
+        BlockData data = resolveBlockData(blockPart, fallback);
         if (data != null && denied.contains(data.getMaterial())) {
             throw new PlanException("block '" + blockPart + "' is not allowed on this server.");
         }
         dataCache.put(blockPart, data);
         return data;
+    }
+
+    private BlockData resolveBlockData(String blockPart, String fallback) throws PlanException {
+        String normalized = normalizeBlockName(blockPart);
+
+        // 1. Try parsing normalized name with properties
+        try {
+            BlockData data = blockParser.apply(normalized);
+            if (data != null) {
+                return data;
+            }
+        } catch (IllegalArgumentException | NullPointerException ignored) {}
+
+        int bracket = normalized.indexOf('[');
+        String baseId = bracket >= 0 ? normalized.substring(0, bracket) : normalized;
+        String props = bracket >= 0 ? normalized.substring(bracket) : "";
+
+        // 2. Torch on wall: torch[facing=...] -> wall_torch[facing=...]
+        if (baseId.endsWith("torch") && !baseId.contains("wall") && props.contains("facing")) {
+            String wallBase = baseId.replace("torch", "wall_torch");
+            String kept = validProperties(wallBase, props);
+            BlockData data = tryParse(wallBase + kept);
+            if (data != null) {
+                return data;
+            }
+        }
+
+        // 3. Keep only the valid properties, then fall back to the bare block
+        //    (heals invalid properties like glass_pane[facing=east])
+        if (bracket >= 0) {
+            String kept = validProperties(baseId, props);
+            if (!kept.isEmpty()) {
+                BlockData data = tryParse(baseId + kept);
+                if (data != null) {
+                    return data;
+                }
+            }
+            try {
+                BlockData data = blockParser.apply(baseId);
+                if (data != null) {
+                    return data;
+                }
+            } catch (IllegalArgumentException | NullPointerException ignored) {}
+        }
+
+        // 4. Try heuristic fallback for unknown or hallucinated block names
+        String heuristic = findHeuristicBlock(baseId);
+        if (heuristic != null && !heuristic.equals(baseId)) {
+            if (bracket >= 0) {
+                try {
+                    BlockData data = blockParser.apply(heuristic + props);
+                    if (data != null) {
+                        return data;
+                    }
+                } catch (IllegalArgumentException | NullPointerException ignored) {}
+            }
+            try {
+                BlockData data = blockParser.apply(heuristic);
+                if (data != null) {
+                    return data;
+                }
+            } catch (IllegalArgumentException | NullPointerException ignored) {}
+        }
+
+        // 5. Try explicit fallback if provided
+        if (fallback != null && !fallback.isBlank()) {
+            try {
+                BlockData data = blockParser.apply(fallback);
+                if (data != null) {
+                    return data;
+                }
+            } catch (IllegalArgumentException | NullPointerException ignored) {}
+        }
+
+        // 6. Last resort default block: minecraft:stone
+        try {
+            BlockData data = blockParser.apply("minecraft:stone");
+            if (data != null) {
+                return data;
+            }
+        } catch (IllegalArgumentException | NullPointerException ignored) {}
+
+        throw new PlanException("unknown block '" + blockPart + "'.");
+    }
+
+    private BlockData tryParse(String s) {
+        try {
+            return blockParser.apply(s);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return null;
+        }
+    }
+
+    /** Returns "[a=b,c=d]" containing only the properties the block accepts individually, or "". */
+    private String validProperties(String baseId, String props) {
+        if (props.length() < 3 || !props.endsWith("]")) {
+            return "";
+        }
+        List<String> kept = new ArrayList<>();
+        for (String prop : props.substring(1, props.length() - 1).split(",")) {
+            if (prop.contains("=") && tryParse(baseId + "[" + prop + "]") != null) {
+                kept.add(prop);
+            }
+        }
+        return kept.isEmpty() ? "" : "[" + String.join(",", kept) + "]";
+    }
+
+    static String normalizeBlockName(String blockPart) {
+        if (blockPart == null || blockPart.isBlank()) {
+            return "minecraft:stone";
+        }
+        int bracket = blockPart.indexOf('[');
+        String base = bracket >= 0 ? blockPart.substring(0, bracket) : blockPart;
+        String props = bracket >= 0 ? blockPart.substring(bracket) : "";
+
+        // Normalize plural "bricks" to singular "brick" for stairs, slabs, walls, fences:
+        base = base.replace("_bricks_stairs", "_brick_stairs")
+                   .replace("_bricks_slab", "_brick_slab")
+                   .replace("_bricks_wall", "_brick_wall")
+                   .replace("_bricks_fence", "_brick_fence")
+                   .replace(":bricks_stairs", ":brick_stairs")
+                   .replace(":bricks_slab", ":brick_slab")
+                   .replace(":bricks_wall", ":brick_wall")
+                   .replace(":bricks_fence", ":brick_fence");
+
+        // Normalize wood aliases (e.g. oak_wood_stairs -> oak_stairs, oak_wooden_stairs -> oak_stairs)
+        base = base.replace("_wood_stairs", "_stairs")
+                   .replace("_wooden_stairs", "_stairs")
+                   .replace("_wood_slab", "_slab")
+                   .replace("_wooden_slab", "_slab")
+                   .replace("_wood_fence", "_fence")
+                   .replace("_wooden_fence", "_fence")
+                   .replace("_wood_fence_gate", "_fence_gate")
+                   .replace("_wooden_fence_gate", "_fence_gate")
+                   .replace("_wood_door", "_door")
+                   .replace("_wooden_door", "_door")
+                   .replace("_wood_trapdoor", "_trapdoor")
+                   .replace("_wooden_trapdoor", "_trapdoor")
+                   .replace("_wood_planks", "_planks")
+                   .replace("_wooden_planks", "_planks")
+                   .replace("_wood_pressure_plate", "_pressure_plate")
+                   .replace("_wooden_pressure_plate", "_pressure_plate")
+                   .replace("_wood_button", "_button")
+                   .replace("_wooden_button", "_button");
+
+        // Common block renames and aliases:
+        base = switch (base) {
+            case "minecraft:grass" -> "minecraft:short_grass";
+            case "minecraft:smooth_stone_stairs" -> "minecraft:stone_brick_stairs";
+            case "minecraft:smooth_stone_wall" -> "minecraft:stone_brick_wall";
+            case "minecraft:iron_bars_pane" -> "minecraft:iron_bars";
+            case "minecraft:leaves" -> "minecraft:oak_leaves";
+            case "minecraft:log" -> "minecraft:oak_log";
+            case "minecraft:wood" -> "minecraft:oak_wood";
+            case "minecraft:planks" -> "minecraft:oak_planks";
+            case "minecraft:stairs" -> "minecraft:oak_stairs";
+            case "minecraft:slab" -> "minecraft:stone_brick_slab";
+            case "minecraft:wall" -> "minecraft:stone_brick_wall";
+            case "minecraft:torch_wall" -> "minecraft:wall_torch";
+            case "minecraft:redstone_torch_wall" -> "minecraft:redstone_wall_torch";
+            case "minecraft:soul_torch_wall" -> "minecraft:soul_wall_torch";
+            default -> base;
+        };
+
+        return base + props;
+    }
+
+    static String findHeuristicBlock(String baseId) {
+        if (baseId == null) return "minecraft:stone";
+        String lower = baseId.toLowerCase(Locale.ROOT);
+
+        if (lower.endsWith("_stairs")) {
+            if (lower.contains("wood") || lower.contains("oak") || lower.contains("plank") || lower.contains("spruce")
+                    || lower.contains("birch") || lower.contains("jungle") || lower.contains("acacia") || lower.contains("dark_oak")) {
+                return "minecraft:oak_stairs";
+            }
+            return "minecraft:stone_brick_stairs";
+        }
+        if (lower.endsWith("_slab")) {
+            if (lower.contains("wood") || lower.contains("oak") || lower.contains("plank") || lower.contains("spruce")
+                    || lower.contains("birch") || lower.contains("jungle") || lower.contains("acacia") || lower.contains("dark_oak")) {
+                return "minecraft:oak_slab";
+            }
+            return "minecraft:stone_brick_slab";
+        }
+        if (lower.endsWith("_wall")) {
+            return "minecraft:stone_brick_wall";
+        }
+        if (lower.endsWith("_fence_gate")) {
+            return "minecraft:oak_fence_gate";
+        }
+        if (lower.endsWith("_fence")) {
+            if (lower.contains("nether")) {
+                return "minecraft:nether_brick_fence";
+            }
+            return "minecraft:oak_fence";
+        }
+        if (lower.endsWith("_door")) {
+            return "minecraft:oak_door";
+        }
+        if (lower.endsWith("_trapdoor")) {
+            return "minecraft:oak_trapdoor";
+        }
+        if (lower.endsWith("_button")) {
+            return "minecraft:stone_button";
+        }
+        if (lower.endsWith("_pressure_plate")) {
+            return "minecraft:stone_pressure_plate";
+        }
+        if (lower.contains("lantern")) {
+            return "minecraft:lantern";
+        }
+        if (lower.contains("torch")) {
+            return "minecraft:torch";
+        }
+        if (lower.contains("glass")) {
+            return lower.contains("pane") ? "minecraft:glass_pane" : "minecraft:glass";
+        }
+        if (lower.contains("brick")) {
+            return "minecraft:stone_bricks";
+        }
+        if (lower.contains("cobble")) {
+            return "minecraft:cobblestone";
+        }
+        if (lower.contains("stone")) {
+            return "minecraft:stone";
+        }
+        if (lower.contains("wood") || lower.contains("plank") || lower.contains("log")) {
+            return "minecraft:oak_planks";
+        }
+        if (lower.contains("sand")) {
+            return lower.contains("sandstone") ? "minecraft:sandstone" : "minecraft:sand";
+        }
+        if (lower.contains("iron")) {
+            return lower.contains("bar") ? "minecraft:iron_bars" : "minecraft:iron_block";
+        }
+        if (lower.contains("carpet")) {
+            return "minecraft:red_carpet";
+        }
+        if (lower.contains("bed")) {
+            return "minecraft:red_bed";
+        }
+        return "minecraft:stone";
     }
 
     static List<ItemInfo> extractItems(JsonObject o) {
@@ -381,6 +623,33 @@ final class BuildPlanner {
     private static double numD(JsonObject o, String key, Double fallback) throws PlanException {
         JsonElement e = o.get(key);
         if (e == null || e.isJsonNull()) {
+            String[] aliases = switch (key) {
+                case "x1" -> new String[]{"x_1", "from_x", "start_x", "min_x", "x"};
+                case "y1" -> new String[]{"y_1", "from_y", "start_y", "min_y", "y"};
+                case "z1" -> new String[]{"z_1", "from_z", "start_z", "min_z", "z"};
+                case "x2" -> new String[]{"x_2", "to_x", "end_x", "max_x", "x1", "x"};
+                case "y2" -> new String[]{"y_2", "to_y", "end_y", "max_y", "y1", "y"};
+                case "z2" -> new String[]{"z_2", "to_z", "end_z", "max_z", "z1", "z"};
+                case "cx" -> new String[]{"center_x", "x", "x1"};
+                case "cy" -> new String[]{"center_y", "y", "y1"};
+                case "cz" -> new String[]{"center_z", "z", "z1"};
+                case "rx" -> new String[]{"radius_x", "r_x", "r"};
+                case "rz" -> new String[]{"radius_z", "r_z", "r"};
+                case "r" -> new String[]{"radius", "rx", "rz"};
+                case "height" -> new String[]{"h", "len_y"};
+                case "thickness" -> new String[]{"thick", "t", "w"};
+                case "count" -> new String[]{"num_arches", "arches", "n"};
+                case "width" -> new String[]{"w"};
+                default -> new String[0];
+            };
+            for (String alias : aliases) {
+                if (o.has(alias) && !o.get(alias).isJsonNull()) {
+                    e = o.get(alias);
+                    break;
+                }
+            }
+        }
+        if (e == null || e.isJsonNull()) {
             if (fallback == null) {
                 throw new PlanException("missing '" + key + "'.");
             }
@@ -389,6 +658,9 @@ final class BuildPlanner {
         try {
             return e.getAsDouble();
         } catch (RuntimeException ex) {
+            if (fallback != null) {
+                return fallback;
+            }
             throw new PlanException("'" + key + "' must be a number.");
         }
     }

@@ -32,7 +32,8 @@ final class Prompts {
             Rules:
             - Limits: at most %d blocks in total, at most %d blocks wide or deep, at most %d blocks tall. Stay comfortably below them.
             - Prefer few, large operations. Use hollow shells instead of solid volumes. Later operations overwrite earlier ones, so place the big shapes first, then carve openings and add details.
-            - Use only real Java Edition block ids. Do not use TNT, lava, command blocks, barriers, spawners or bedrock.
+            - Use only real Java Edition block ids. Note that stairs, slabs, walls, and fences use singular 'brick' (e.g. "minecraft:stone_brick_stairs", "minecraft:stone_brick_slab", "minecraft:stone_brick_wall", "minecraft:brick_stairs"), whereas full blocks use plural (e.g. "minecraft:stone_bricks", "minecraft:bricks"). Wooden items omit "wood" (e.g. "minecraft:oak_stairs", "minecraft:oak_slab", "minecraft:oak_door", not oak_wood_stairs).
+            - Use valid block states: Do not use non-existent properties (e.g. "minecraft:glass_pane" has NO facing property; "minecraft:torch" has no facing, use "minecraft:wall_torch[facing=...]" for wall-mounted torches; "minecraft:lantern" uses hanging=true/false, not facing). Do not use TNT, lava, command blocks, barriers, spawners or bedrock.
             - Make it recognisable and attractive: mix materials (for example stone_bricks, sandstone, smooth_sandstone, cut_sandstone and matching stairs and slabs), keep believable proportions, add floors, entrances, stairs, lighting and small details.
             - Keep interiors walkable: never fill rooms, arenas or halls solid.
             - Multi-floor structures: When building multi-story buildings (e.g. houses with 2 or 3 floors), divide the vertical space into distinct levels (e.g. ground floor y=1..4, 2nd floor y=5..8, 3rd floor y=9..12). Add intermediate floor slabs/planks, interior stairs or ladders between levels, and lighting.

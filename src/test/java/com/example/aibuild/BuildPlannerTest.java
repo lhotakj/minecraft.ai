@@ -9,7 +9,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -245,6 +247,104 @@ class BuildPlannerTest {
         assertEquals(1, items2.size());
         assertEquals("diamond", items2.get(0).materialName());
         assertEquals(5, items2.get(0).count());
+    }
+
+    @Test
+    @DisplayName("Auto-heal plural bricks to singular brick for stairs, slabs, and walls")
+    void testPluralBricksAutoHeal() throws Exception {
+        String jsonOps = """
+                [
+                  {"op": "setblock", "x": 0, "y": 1, "z": 0, "block": "minecraft:stone_bricks_stairs[facing=east]"},
+                  {"op": "setblock", "x": 1, "y": 1, "z": 0, "block": "minecraft:mossy_stone_bricks_slab"},
+                  {"op": "setblock", "x": 2, "y": 1, "z": 0, "block": "minecraft:nether_bricks_fence"},
+                  {"op": "setblock", "x": 3, "y": 1, "z": 0, "block": "minecraft:bricks_stairs[facing=south]"}
+                ]
+                """;
+        JsonArray ops = JsonParser.parseString(jsonOps).getAsJsonArray();
+
+        java.util.List<String> parsedBlocks = new ArrayList<>();
+        BuildPlanner planner = new BuildPlanner(100, Collections.emptySet(), name -> {
+            parsedBlocks.add(name);
+            return mockBlockData(Material.STONE_BRICK_STAIRS);
+        });
+
+        Map<BuildPlanner.Pos, BlockData> plan = planner.plan(ops);
+        assertEquals(4, plan.size());
+
+        assertEquals("minecraft:stone_brick_stairs[facing=east]", parsedBlocks.get(0));
+        assertEquals("minecraft:mossy_stone_brick_slab", parsedBlocks.get(1));
+        assertEquals("minecraft:nether_brick_fence", parsedBlocks.get(2));
+        assertEquals("minecraft:brick_stairs[facing=south]", parsedBlocks.get(3));
+    }
+
+    @Test
+    @DisplayName("Auto-heal invalid properties like glass_pane[facing=east] or torch[facing=north]")
+    void testInvalidPropertiesAutoHeal() throws Exception {
+        String jsonOps = """
+                [
+                  {"op": "setblock", "x": 0, "y": 1, "z": 0, "block": "minecraft:glass_pane[facing=east]"},
+                  {"op": "setblock", "x": 1, "y": 1, "z": 0, "block": "minecraft:torch[facing=north]"}
+                ]
+                """;
+        JsonArray ops = JsonParser.parseString(jsonOps).getAsJsonArray();
+
+        BuildPlanner planner = new BuildPlanner(100, Collections.emptySet(), name -> {
+            if (name.equals("minecraft:glass_pane[facing=east]")) {
+                throw new IllegalArgumentException("glass_pane does not have facing property");
+            }
+            if (name.equals("minecraft:glass_pane")) {
+                return mockBlockData(Material.GLASS_PANE);
+            }
+            if (name.equals("minecraft:torch[facing=north]")) {
+                throw new IllegalArgumentException("torch does not have facing property");
+            }
+            if (name.equals("minecraft:wall_torch[facing=north]")) {
+                return mockBlockData(Material.WALL_TORCH);
+            }
+            return mockBlockData(Material.STONE);
+        });
+
+        Map<BuildPlanner.Pos, BlockData> plan = planner.plan(ops);
+        assertEquals(2, plan.size());
+        assertEquals(Material.GLASS_PANE, plan.get(new BuildPlanner.Pos(0, 1, 0)).getMaterial());
+        assertEquals(Material.WALL_TORCH, plan.get(new BuildPlanner.Pos(1, 1, 0)).getMaterial());
+    }
+
+    @Test
+    @DisplayName("Invalid properties are dropped individually, valid ones kept")
+    void testPartialPropertyHeal() throws Exception {
+        JsonArray ops = JsonParser.parseString("""
+                [{"op": "setblock", "x": 0, "y": 1, "z": 0, "block": "minecraft:oak_stairs[facing=east,bogus=1]"}]
+                """).getAsJsonArray();
+        List<String> seen = new ArrayList<>();
+        BuildPlanner planner = new BuildPlanner(100, Collections.emptySet(), name -> {
+            seen.add(name);
+            if (name.contains("bogus") || name.equals("minecraft:oak_stairs[facing=east,bogus=1]")) {
+                throw new IllegalArgumentException("bad");
+            }
+            return mockBlockData(Material.OAK_STAIRS);
+        });
+        planner.plan(ops);
+        assertEquals("minecraft:oak_stairs[facing=east]", seen.get(seen.size() - 1));
+    }
+
+    @Test
+    @DisplayName("Support operation aliases and informational operations without crashing")
+    void testOperationAliasesAndComments() throws Exception {
+        String jsonOps = """
+                [
+                  {"op": "comment", "text": "Foundation level"},
+                  {"op": "box", "x1": 0, "y1": 0, "z1": 0, "x2": 2, "y2": 0, "z2": 2, "block": "minecraft:stone"},
+                  {"op": "cylinder", "cx": 5, "cz": 5, "y": 1, "rx": 3, "rz": 3, "height": 2, "thickness": 1, "block": "minecraft:stone_bricks"},
+                  {"op": "note", "text": "Decorative details"},
+                  {"op": "place", "x": 0, "y": 1, "z": 0, "block": "minecraft:lantern"}
+                ]
+                """;
+        JsonArray ops = JsonParser.parseString(jsonOps).getAsJsonArray();
+
+        BuildPlanner planner = new BuildPlanner(1000, Collections.emptySet(), name -> mockBlockData(Material.STONE));
+        Map<BuildPlanner.Pos, BlockData> plan = planner.plan(ops);
+        assertFalse(plan.isEmpty());
     }
 }
 
