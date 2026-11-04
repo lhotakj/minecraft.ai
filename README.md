@@ -58,7 +58,9 @@ Set the variables on the machine or container running the server:
 export AI_PROVIDER="gemini"
 
 # Optional: Provider failover chain (tries openrouter first, then gemini):
+# (Also accepts AI_ORDER="openrouter gemini" or model chains: AI_ORDER="gemini-3.8-flash gemini-3.7-flash")
 export PROVIDER_ORDER="openrouter gemini"
+export AI_ORDER="openrouter gemini"
 
 # For Gemini:
 export GEMINI_API_KEY="AIzaSy..."
@@ -90,8 +92,9 @@ export OPENROUTER_THINKING_LEVEL=""     # low | medium | high (mapped to underly
 # Select provider: "gemini", "anthropic", "openai", or "openrouter"
 provider: gemini
 
-# Optional: Provider failover order (space or comma-delimited).
-# Each provider tries its full model chain before failing over to the next provider.
+# Optional: Provider failover order (space or comma-delimited, or YAML list).
+# Also supported under alias 'ai_order' or 'ai-order'.
+# Supports providers ("openrouter gemini") or specific models ("gemini-3.8-flash gemini-3.7-flash").
 provider-order: "openrouter gemini"
 
 gemini:
@@ -158,6 +161,11 @@ How each provider handles thinking levels:
 To revert the build:
 ```minecraft
 /ai undo
+```
+
+To view active AI provider chain and model execution order:
+```minecraft
+/ai order
 ```
 
 To view plugin version and AI provider status:

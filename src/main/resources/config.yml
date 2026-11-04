@@ -1,10 +1,15 @@
 # Which AI designs the builds: "gemini", "anthropic" (Claude), "openai", or "openrouter".
 provider: gemini
 
-# Optional: Set the failover order of AI providers (space or comma-delimited list).
-# Each provider will try its configured models in order before failing over to the next provider.
-# Example: "openrouter gemini" or "openrouter, openai, gemini"
-# Can also be set via the PROVIDER_ORDER environment variable (or env AI_PROVIDER_ORDER).
+# Optional: Set the failover order of AI providers or specific models.
+# Also supported under the alias 'ai_order' or 'ai-order' (string or YAML list).
+# Examples:
+#   provider-order: "openrouter gemini"
+#   ai_order: "gemini-3.8-flash gemini-3.7-flash"
+#   ai_order:
+#     - openrouter
+#     - gemini
+# Can also be set via the AI_ORDER or PROVIDER_ORDER environment variables.
 # If left empty, the single 'provider' setting above is used.
 provider-order: ""
 
@@ -12,11 +17,11 @@ provider-order: ""
 # (recommended - keeps keys out of this file).
 gemini:
   api-key: ""              # or env GEMINI_API_KEY
-  # You can specify a single model or a space/comma-delimited list of models.
+  # You can specify a single model or a space/comma-delimited list of models (or YAML list).
   # If the first model fails (e.g. HTTP 503 high demand or HTTP 429 rate limit),
   # the plugin automatically retries transient errors and fails over to the next model in the list.
   # Can also be set via the GEMINI_MODEL environment variable.
-  model: "gemini-3.5-flash gemini-3.8-flash gemini-3.7-flash"
+  model: "gemini-3.8-flash gemini-3.7-flash gemini-3.5-flash"
   # Gemini's "thinking" tokens count toward this limit, so keep it generous.
   max-output-tokens: 32768
   # Optional: low | medium | high. Empty = the model's default.

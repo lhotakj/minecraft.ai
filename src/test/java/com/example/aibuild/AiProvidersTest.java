@@ -318,4 +318,91 @@ class AiProvidersTest {
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> AiProviders.create(cfg));
         assertTrue(ex.getMessage().contains("Unknown provider"));
     }
+
+    @Test
+    void testAiOrderKeyAlias() {
+        String yaml = """
+                ai_order: "openrouter gemini"
+                openrouter:
+                  api-key: "test-router-key"
+                  model: "google/gemini-2.5-flash"
+                gemini:
+                  api-key: "test-gemini-key"
+                  model: "gemini-3.8-flash"
+                """;
+        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(new StringReader(yaml));
+        AiProvider provider = AiProviders.create(cfg);
+        assertTrue(provider instanceof ChainedAiProvider);
+        ChainedAiProvider chained = (ChainedAiProvider) provider;
+        assertEquals(2, chained.providers().size());
+        assertTrue(chained.providers().get(0) instanceof OpenRouterClient);
+        assertTrue(chained.providers().get(1) instanceof GeminiClient);
+    }
+
+    @Test
+    void testAiOrderYamlList() {
+        String yaml = """
+                ai_order:
+                  - openrouter
+                  - gemini
+                openrouter:
+                  api-key: "test-router-key"
+                  model: "google/gemini-2.5-flash"
+                gemini:
+                  api-key: "test-gemini-key"
+                  model: "gemini-3.8-flash"
+                """;
+        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(new StringReader(yaml));
+        AiProvider provider = AiProviders.create(cfg);
+        assertTrue(provider instanceof ChainedAiProvider);
+        ChainedAiProvider chained = (ChainedAiProvider) provider;
+        assertEquals(2, chained.providers().size());
+    }
+
+    @Test
+    void testAiOrderDirectModelNames() {
+        String yaml = """
+                ai_order: "gemini-3.8-flash gemini-3.7-flash gemini-3.5-flash"
+                gemini:
+                  api-key: "test-gemini-key"
+                """;
+        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(new StringReader(yaml));
+        AiProvider provider = AiProviders.create(cfg);
+        assertTrue(provider instanceof GeminiClient);
+        assertEquals("gemini-3.8-flash (+2 fallbacks)", provider.label());
+    }
+
+    @Test
+    void testAiOrderCrossProviderModels() {
+        String yaml = """
+                ai_order: "openrouter/free gemini:gemini-3.8-flash"
+                openrouter:
+                  api-key: "test-router-key"
+                gemini:
+                  api-key: "test-gemini-key"
+                """;
+        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(new StringReader(yaml));
+        AiProvider provider = AiProviders.create(cfg);
+        assertTrue(provider instanceof ChainedAiProvider);
+        ChainedAiProvider chained = (ChainedAiProvider) provider;
+        assertEquals(2, chained.providers().size());
+        assertEquals("openrouter/free", chained.providers().get(0).label());
+        assertEquals("gemini-3.8-flash", chained.providers().get(1).label());
+    }
+
+    @Test
+    void testProviderModelAsYamlList() {
+        String yaml = """
+                provider: gemini
+                gemini:
+                  api-key: "test-gemini-key"
+                  model:
+                    - gemini-3.8-flash
+                    - gemini-3.7-flash
+                """;
+        YamlConfiguration cfg = YamlConfiguration.loadConfiguration(new StringReader(yaml));
+        AiProvider provider = AiProviders.create(cfg);
+        assertTrue(provider instanceof GeminiClient);
+        assertEquals("gemini-3.8-flash (+1 fallbacks)", provider.label());
+    }
 }

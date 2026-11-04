@@ -87,6 +87,11 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
             return true;
         }
 
+        if (sub.equals("order") || sub.equals("providers") || sub.equals("models")) {
+            handleOrder(sender);
+            return true;
+        }
+
         if (sub.equals("help")) {
             handleHelp(sender);
             return true;
@@ -109,7 +114,7 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
         if (args.length != 1) {
             return List.of();
         }
-        List<String> options = new ArrayList<>(List.of("build", "undo", "version", "help"));
+        List<String> options = new ArrayList<>(List.of("build", "undo", "version", "order", "help"));
         if (sender.hasPermission("aibuild.admin")) {
             options.add("reload");
         }
@@ -119,7 +124,7 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
     }
 
     private void usage(CommandSender sender) {
-        sender.sendMessage(Component.text("Usage: /ai <build <description> | undo | version | help"
+        sender.sendMessage(Component.text("Usage: /ai <build <description> | undo | version | order | help"
                 + (sender.hasPermission("aibuild.admin") ? " | reload>" : ">"), NamedTextColor.YELLOW));
     }
 
@@ -129,6 +134,26 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
         try {
             AiProvider provider = AiProviders.create(getConfig());
             sender.sendMessage(Component.text("[AI] Active AI Provider: " + provider.label(), NamedTextColor.GRAY));
+        } catch (Exception e) {
+            sender.sendMessage(Component.text("[AI] AI Provider status: Not configured (" + e.getMessage() + ")",
+                    NamedTextColor.RED));
+        }
+    }
+
+    private void handleOrder(CommandSender sender) {
+        try {
+            AiProvider provider = AiProviders.create(getConfig());
+            sender.sendMessage(Component.text("=== AiBuild AI Configuration ===", NamedTextColor.GOLD));
+            sender.sendMessage(Component.text("Active AI Execution: ", NamedTextColor.YELLOW)
+                    .append(Component.text(provider.label(), NamedTextColor.WHITE)));
+            if (provider instanceof ChainedAiProvider chained) {
+                sender.sendMessage(Component.text("Provider Chain (" + chained.providers().size() + " providers):", NamedTextColor.GRAY));
+                int idx = 1;
+                for (AiProvider p : chained.providers()) {
+                    sender.sendMessage(Component.text("  " + idx + ". " + p.label(), NamedTextColor.AQUA));
+                    idx++;
+                }
+            }
         } catch (Exception e) {
             sender.sendMessage(Component.text("[AI] AI Provider status: Not configured (" + e.getMessage() + ")",
                     NamedTextColor.RED));
@@ -147,6 +172,8 @@ public final class AiBuildPlugin extends JavaPlugin implements TabExecutor {
                 .append(Component.text(" - Revert your most recent build", NamedTextColor.WHITE)));
         sender.sendMessage(Component.text("/ai version", NamedTextColor.YELLOW)
                 .append(Component.text(" - Display plugin version & provider info", NamedTextColor.WHITE)));
+        sender.sendMessage(Component.text("/ai order", NamedTextColor.YELLOW)
+                .append(Component.text(" - Display active AI execution order & model chain", NamedTextColor.WHITE)));
         sender.sendMessage(Component.text("/ai help", NamedTextColor.YELLOW)
                 .append(Component.text(" - Show this help menu", NamedTextColor.WHITE)));
         if (sender.hasPermission("aibuild.admin")) {

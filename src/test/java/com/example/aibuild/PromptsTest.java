@@ -23,6 +23,18 @@ class PromptsTest {
     }
 
     @Test
+    @DisplayName("System prompt contains block naming and consistency rules")
+    void testBlockNamingRules() {
+        String prompt = Prompts.system(200000, 120, 100);
+
+        assertTrue(prompt.contains("stone_brick_stairs"));
+        assertTrue(prompt.contains("NEVER write stone_bricks_stairs"));
+        assertTrue(prompt.contains("Palette consistency"));
+        assertTrue(prompt.contains("Structure consistency"));
+        assertTrue(prompt.contains("Block states"));
+    }
+
+    @Test
     @DisplayName("System prompt contains multi-floor, door, and balcony instructions")
     void testArchitecturalGuidelines() {
         String prompt = Prompts.system(200000, 120, 100);
